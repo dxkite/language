@@ -341,6 +341,10 @@ reScan:
 	case isLetter(ch):
 		tok = token.IDENT
 		lit = s.scanIdentifier()
+		switch lit {
+		case "defined":
+			tok = token.DEFINED
+		}
 	case isDecimal(ch):
 		tok, lit = s.scanNumber()
 	case ch == '\'' && s.tryChar():
