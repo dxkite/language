@@ -1,0 +1,178 @@
+identifier  =
+    "a..z,_"  <  "a..z,_,0..9,rune letter"  >  .
+
+character   =
+    "all character set"  .
+
+char    =
+    "'" < character >  "'"  .
+
+string  =
+    double_quote < character > double_quote .
+
+macro_prefix =
+       "line start" .
+
+decimal_digits  =
+    "0..9"  <  "0..9"  >  .
+
+hexadecimal_digits  =
+    "0..9a..f"  <  "0..9a..f"  >  .
+
+octal_digits  =
+    <  "0..7"  > .
+
+binary_digits   =
+    "0" / "1"   .
+
+exponent_part   =
+    "e" [  "+"  /  "-"  ] decimal_digits  .
+
+hexadecimal_exponent_part   =
+    "p" [  "+"  /  "-"  ] decimal_digits  .
+
+float_type_suffix   =
+    "f"  .
+
+unsigned_type_suffix    =
+    "u" .
+
+long_type_suffix    =
+    "l" .
+
+
+decimal_type_suffix =
+    ([unsigned_type_suffix] long_type_suffix)
+    / unsigned_type_suffix
+    / float_type_suffix .
+
+integer_literal =
+    ( decimal_digits [decimal_type_suffix])
+    / ( "0" octal_digits )
+    / ( "0" "b" binary_digits )
+    / ( "0" "x" hexadecimal_digits ) .
+
+float_literal  =
+ ( decimal_digits  "."  [ decimal_digits ]  [ exponent_part ]  [ float_type_suffix ]  )
+ /  ( decimal_digits  [ exponent_part ]  [ float_type_suffix ]  )  .
+ / ( "0" "x" hexadecimal_digits "." [hexadecimal_digits]  [ hexadecimal_exponent_part ] [ float_type_suffix ]) .
+
+macro_connectable  =
+    identifier
+    / integer_literal
+    / float_literal
+
+expression  =
+    identifier
+    / literal_expression
+    / logical_expression
+    / numeric_expression
+    / bit_expression
+    / testing_expression
+    / "(" expression ")"
+    / macro_params_expression .
+
+macro_params_expression =
+    identifier ( "("  [ macro_argument_list ]  ")"  ) .
+
+macro_literal   =
+    identifier
+    / macro_params_expression
+    / ( "#" identifier )
+    / ( macro_connectable "##" macro_connectable ) .
+
+logical_expression  =
+     ( "!" expression )
+     / ( "defined" identifier )
+     / ( expression ( "&&" / "||" ) expression ) .
+
+numeric_expression  =
+     (  "-" expression )
+     /  ( expression (  "+" /  "-" /  "*" /  "/" /  "%" ) expression  )  .
+
+testing_expression  =
+     ( expression
+     (  ">"
+     /  "<"
+     /  ">="
+     /  "<="
+     /  "=="
+     /  "!="  )
+    expression  )  .
+
+bit_expression  =
+ (  "~" expression )
+ /  ( expression ( "&" / "^" / "<<" /  ">>" ) expression  )  .
+
+macro_param =
+    expression
+    / "text not , "
+
+macro_argument_list  =
+    macro_param  <  "," macro_param  >  .
+
+literal_expression =
+    integer_literal
+    / float_literal
+    / string
+    / char  .
+
+code =
+    text
+    / macro_literal .
+
+text_line
+    = "text util \n without \ "
+
+code_line =
+    text_line
+    / macro_literal .
+
+text_literal =
+    < [ code ] > .
+
+
+define_literal  =
+    identifier
+    / identifier "(" [  (identifier <  "," identifier ] ) > ")"  .
+
+
+if_statement    =
+    ( macro_prefix
+    ( "#if" expression
+    / "#ifdef" identifier
+    / "#ifndef" identifier )
+    text_literal
+    [ < macro_prefix "#elif" expression text_literal >
+    macro_prefix "#else" text_literal ]
+    macro_prefix "#endif" ).
+
+
+include_statement   =
+    ( macro_prefix "#include" ( "<" character ">" / string )) .
+
+
+error_statement =
+    ( macro_prefix "#error" text_line ) .
+
+
+define_statement    =
+    ( macro_prefix "#define" define_literal code_line ) .
+
+
+line_statement  =
+    ( macro_prefix "#line" decimal_digits [ string ] ) .
+
+
+nop_statement =
+    ( macro_prefix "#" text_line ) .
+
+macro_statement =
+    if_statement
+    / error_statement
+    / define_statement
+    / line_statement
+    / nop_statement .
+
+program =
+    < ( macro_statement / text_literal ) > .
