@@ -86,6 +86,8 @@ func TestScanner_Scan(t *testing.T) {
 		&Error{Position{37, 2, 29}, "'p' exponent requires hexadecimal mantissa"},
 	}
 
+	litCode := ""
+
 	for _, tt := range tests {
 		gotOffset, gotTok, gotLit := s.Scan()
 		if gotTok != tt.tok {
@@ -96,10 +98,15 @@ func TestScanner_Scan(t *testing.T) {
 			fmt.Printf("=== offset:%v \ttok:token.%-8v lit:%v\n", gotOffset, gotTok, strconv.QuoteToGraphic(gotLit))
 			t.Fatalf("Scan() gotLit = %v, want %v", gotLit, tt.lit)
 		}
+		litCode += gotLit
 	}
 
 	if !reflect.DeepEqual(s.Err, errors) {
-		t.Fatalf("Scan() Error report failed")
+		t.Fatalf("Scan() Error report failed\n")
+	}
+
+	if string(code) != litCode {
+		t.Fatalf("Scan() lit code missing\nwant:\n%s\ngot:\n%s\n", string(code), litCode)
 	}
 }
 
