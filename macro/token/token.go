@@ -129,50 +129,74 @@ var tokens = [...]string{
 	ERROR:        "#error",
 	NOP:          "#",
 	DEFINED:      "defined",
-
-	//ADD:          "ADD",
-	//SUB:          "SUB",
-	//MUL:          "MUL",
-	//QUO:          "QUO",
-	//REM:          "REM",
-	//AND:          "AND",
-	//OR:           "OR",
-	//XOR:          "XOR",
-	//SHL:          "SHL",
-	//SHR:          "SHR",
-	//NOT:          "NOT",
-	//LAND:         "LAND",
-	//LOR:          "LOR",
-	//LNOT:         "LNOT",
-	//EQL:          "EQL",
-	//LSS:          "LSS",
-	//GTR:          "GTR",
-	//NEQ:          "NEQ",
-	//LEQ:          "LEQ",
-	//GEQ:          "GEQ",
-	//SHARP:        "SHARP",
-	//DOUBLE_SHARP: "DOUBLE_SHARP",
-	//LF:           "LF",
-	//LPAREN:       "LPAREN",
-	//COMMA:        "COMMA",
-	//RPAREN:       "RPAREN",
-	//INCLUDE:      "INCLUDE",
-	//IF:           "IF",
-	//IF_DEFINE:    "IF_DEFINE",
-	//IF_NO_DEFINE: "IF_NO_DEFINE",
-	//ELSE:         "ELSE",
-	//ELSEIF:       "ELSEIF",
-	//ENDIF:        "ENDIF",
-	//LINE:         "LINE",
-	//ERROR:        "ERROR",
-	//NOP:          "NOP",
-	//DEFINED:      "DEFINED",
 }
 
 func (tok Token) String() string {
 	s := ""
 	if 0 <= tok && tok < Token(len(tokens)) {
 		s = tokens[tok]
+	}
+	if s == "" {
+		s = "token(" + strconv.Itoa(int(tok)) + ")"
+	}
+	return s
+}
+
+var tokenName = [...]string{
+	ILLEGAL:      "ILLEGAL",
+	EOF:          "EOF",
+	COMMENT:      "COMMENT",
+	TEXT:         "TEXT",
+	IDENT:        "IDENT",
+	INT:          "INT",
+	FLOAT:        "FLOAT",
+	CHAR:         "CHAR",
+	STRING:       "STRING",
+	ADD:          "ADD",
+	SUB:          "SUB",
+	MUL:          "MUL",
+	QUO:          "QUO",
+	REM:          "REM",
+	AND:          "AND",
+	OR:           "OR",
+	XOR:          "XOR",
+	SHL:          "SHL",
+	SHR:          "SHR",
+	NOT:          "NOT",
+	LAND:         "LAND",
+	LOR:          "LOR",
+	LNOT:         "LNOT",
+	EQL:          "EQL",
+	LSS:          "LSS",
+	GTR:          "GTR",
+	NEQ:          "NEQ",
+	LEQ:          "LEQ",
+	GEQ:          "GEQ",
+	SHARP:        "SHARP",
+	DOUBLE_SHARP: "DOUBLE_SHARP",
+	LF:           "LF",
+	LPAREN:       "LPAREN",
+	COMMA:        "COMMA",
+	RPAREN:       "RPAREN",
+	INCLUDE:      "INCLUDE",
+	IF:           "IF",
+	IF_DEFINE:    "IF_DEFINE",
+	IF_NO_DEFINE: "IF_NO_DEFINE",
+	ELSE:         "ELSE",
+	ELSEIF:       "ELSEIF",
+	ENDIF:        "ENDIF",
+	LINE:         "LINE",
+	ERROR:        "ERROR",
+	NOP:          "NOP",
+	DEFINED:      "DEFINED",
+}
+
+type TokenName Token
+
+func (tok TokenName) String() string {
+	s := ""
+	if 0 <= tok && tok < TokenName(len(tokens)) {
+		s = tokenName[tok]
 	}
 	if s == "" {
 		s = "token(" + strconv.Itoa(int(tok)) + ")"

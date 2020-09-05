@@ -140,18 +140,20 @@ func (s *Scanner) scanString() string {
 func (s *Scanner) scanChar() string {
 	offs := s.offset
 	s.next()
-	n := 0
+	n := 1
 	for s.ch > 0 && s.ch != '\'' {
-		s.next()
-		n++
 		if s.ch == '\\' && s.peek() == '\'' {
 			s.next()
+			n--
 		}
+		s.next()
 		if n > 1 {
 			s.error(s.offset, "error char")
 			break
 		}
+		n++
 	}
+	s.next()
 	return string(s.src[offs:s.offset])
 }
 
@@ -180,19 +182,20 @@ func (s *Scanner) tryString() bool {
 func (s *Scanner) tryChar() bool {
 	s.save()
 	defer s.reset()
-	n := 0
 	s.next()
+	n := 1
 	for s.ch > 0 && s.ch != '\'' {
-		s.next()
-		n++
 		if s.ch == '\\' && s.peek() == '\'' {
 			s.next()
+			n--
 		}
+		s.next()
 		if n > 1 {
 			break
 		}
+		n++
 	}
-	if s.ch < 0 || n > 1 {
+	if s.ch < 0 || n > 1 || n == 0 {
 		return false
 	}
 	return true
@@ -213,9 +216,7 @@ func (s *Scanner) scanToMacroEnd() string {
 	for s.ch > 0 && s.ch != '\n' {
 		if s.ch == '\\' {
 			s.next()
-			for s.ch == '\r' {
-				s.next()
-			}
+			s.skipWhitespace()
 			for s.ch == '\n' {
 				s.next()
 			}
@@ -245,7 +246,7 @@ func (s *Scanner) scanComment() string {
 		s.next()
 		for s.ch != '*' && s.peek() != '/' {
 			if s.ch < 0 {
-				s.warn(s.offset, "comment not terminated")
+				s.error(s.offset, "comment not terminated")
 				goto exit
 			}
 			s.next()
@@ -271,9 +272,6 @@ func (s *Scanner) scanNumber() (tok token.Token, lit string) {
 		case 'x':
 			s.next()
 			base = 16
-		case 'o':
-			s.next()
-			base = 8
 		case 'b':
 			s.next()
 			base = 2
@@ -336,7 +334,6 @@ func (s *Scanner) scanNumberBase(base int) {
 // token.COMMENT
 func (s *Scanner) scanOutMacroToken() (tok token.Token, lit string) {
 	offset := s.offset
-reScan:
 	switch ch := s.ch; {
 	case isLetter(ch):
 		tok = token.IDENT
@@ -466,16 +463,29 @@ reScan:
 		case -1:
 			tok = token.EOF
 		default:
-			if isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("/'\"(),+-*%&|=^<>!\n#", string(s.ch)) {
-				tok = token.TEXT
-				lit = string(s.src[offset:s.offset])
-				return
+			for s.isEndOfText() == false {
+				s.next()
 			}
-			goto reScan
+			tok = token.TEXT
+			lit = string(s.src[offset:s.offset])
 		}
 	}
 	return
 }
+
+func (s *Scanner) isEndOfText() bool {
+	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("/'\"(),+-*%&|=^<>!\n#", string(s.ch)) {
+		if s.ch == '\'' {
+			return s.tryChar()
+		}
+		if s.ch == '"'{
+			return s.tryString()
+		}
+		return true
+	}
+	return false
+}
+
 
 func (s *Scanner) peek() byte {
 	if s.rdOffset < len(s.src) {
@@ -511,13 +521,5 @@ func (s *Scanner) error(offs int, msg string) {
 }
 
 func (s *Scanner) errorf(offs int, format string, args ...interface{}) {
-	s.error(offs, fmt.Sprintf(format, args...))
-}
-
-func (s *Scanner) warn(offs int, msg string) {
-	fmt.Println(offs, msg)
-}
-
-func (s *Scanner) warnf(offs int, format string, args ...interface{}) {
 	s.error(offs, fmt.Sprintf(format, args...))
 }
