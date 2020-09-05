@@ -136,27 +136,6 @@ func (s *Scanner) scanString() string {
 	return string(s.src[offs:s.offset])
 }
 
-// 扫描单个字符
-func (s *Scanner) scanChar() string {
-	offs := s.offset
-	s.next()
-	n := 1
-	for s.ch > 0 && s.ch != '\'' {
-		if s.ch == '\\' && s.peek() == '\'' {
-			s.next()
-			n--
-		}
-		s.next()
-		if n > 1 {
-			s.error(s.offset, "error char")
-			break
-		}
-		n++
-	}
-	s.next()
-	return string(s.src[offs:s.offset])
-}
-
 // 尝试解析字符串
 func (s *Scanner) tryString() bool {
 	s.save()
@@ -178,22 +157,41 @@ func (s *Scanner) tryString() bool {
 	return true
 }
 
+// 扫描单个字符
+func (s *Scanner) scanChar() string {
+	offs := s.offset
+	s.next() // '
+	n := 0
+	for s.ch > 0 && s.ch != '\'' {
+		n++
+		if s.ch == '\\' && s.peek() == '\'' {
+			s.next()
+		}
+		s.next()
+		if n > 1 {
+			s.error(s.offset, "error char")
+			break
+		}
+	}
+	s.next()
+	return string(s.src[offs:s.offset])
+}
+
 // 尝试解析字符
 func (s *Scanner) tryChar() bool {
 	s.save()
 	defer s.reset()
 	s.next()
-	n := 1
+	n := 0
 	for s.ch > 0 && s.ch != '\'' {
+		n++
 		if s.ch == '\\' && s.peek() == '\'' {
 			s.next()
-			n--
 		}
 		s.next()
 		if n > 1 {
 			break
 		}
-		n++
 	}
 	if s.ch < 0 || n > 1 || n == 0 {
 		return false
@@ -474,18 +472,17 @@ func (s *Scanner) scanOutMacroToken() (tok token.Token, lit string) {
 }
 
 func (s *Scanner) isEndOfText() bool {
-	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("/'\"(),+-*%&|=^<>!\n#", string(s.ch)) {
+	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("/'\"(),+-*%&|=^~<>!\n#", string(s.ch)) {
 		if s.ch == '\'' {
 			return s.tryChar()
 		}
-		if s.ch == '"'{
+		if s.ch == '"' {
 			return s.tryString()
 		}
 		return true
 	}
 	return false
 }
-
 
 func (s *Scanner) peek() byte {
 	if s.rdOffset < len(s.src) {
