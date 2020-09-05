@@ -10,13 +10,14 @@ import (
 
 // 词法扫描
 type Scanner struct {
-	src         []byte // source
-	ch          rune   // current character
-	offset      int    // character offset
-	rdOffset    int    // reading offset (position after current character)
-	isLineStart bool   // line start
-
-	state *Scanner // state save
+	src          []byte    // source
+	ch           rune      // current character
+	offset       int       // character offset
+	rdOffset     int       // reading offset (position after current character)
+	isLineStart  bool      // line start
+	line, column int       // position
+	Err          ErrorList // 错误列表
+	state        *Scanner  // state save
 }
 
 // Init
@@ -26,6 +27,9 @@ func (s *Scanner) Init(src []byte) {
 	s.offset = 0
 	s.rdOffset = 0
 	s.isLineStart = true
+	s.line = 1
+	s.column = 0
+	s.Err.Reset()
 	s.next()
 }
 
@@ -35,6 +39,8 @@ func (s *Scanner) next() {
 		s.offset = s.rdOffset
 		if s.ch == '\n' {
 			s.isLineStart = true
+			s.line++
+			s.column = 0
 		}
 		r, w := rune(s.src[s.rdOffset]), 1
 		switch {
@@ -48,6 +54,7 @@ func (s *Scanner) next() {
 			}
 		}
 		s.rdOffset += w
+		s.column += w
 		s.ch = r
 	} else {
 		s.offset = len(s.src)
@@ -497,6 +504,9 @@ func (s *Scanner) save() {
 		offset:      s.offset,
 		rdOffset:    s.rdOffset,
 		isLineStart: s.isLineStart,
+		line:        s.line,
+		column:      s.column,
+		Err:         s.Err,
 	}
 }
 
@@ -514,7 +524,8 @@ func (s *Scanner) skipWhitespace() {
 }
 
 func (s *Scanner) error(offs int, msg string) {
-	fmt.Println(offs, msg)
+	p := Position{Offset: offs, Line: s.line, Column: s.column}
+	s.Err.Add(p, msg)
 }
 
 func (s *Scanner) errorf(offs int, format string, args ...interface{}) {

@@ -1,6 +1,9 @@
 package token
 
-import "strconv"
+import (
+	"strconv"
+	"unicode"
+)
 
 // Token is the set of lexical tokens of the macro language
 type Token int
@@ -52,11 +55,12 @@ const (
 
 	SHARP        //#
 	DOUBLE_SHARP //##
-	LF           // \n
 
 	LPAREN // (
 	COMMA  // ,
 	RPAREN // )
+	LF     // \n
+
 	operator_end
 
 	keyword_beg
@@ -142,6 +146,12 @@ func (tok Token) String() string {
 	return s
 }
 
+// 是否是操作符
+func (tok Token) IsOperator() bool { return operator_beg < tok && tok < operator_end }
+
+// 是否是关键字
+func (tok Token) IsKeyword() bool { return keyword_beg < tok && tok < keyword_end }
+
 var tokenName = [...]string{
 	ILLEGAL:      "ILLEGAL",
 	EOF:          "EOF",
@@ -202,4 +212,29 @@ func (tok TokenName) String() string {
 		s = "token(" + strconv.Itoa(int(tok)) + ")"
 	}
 	return s
+}
+
+var keywords map[string]Token
+
+func init() {
+	keywords = make(map[string]Token)
+	for i := keyword_beg + 1; i < keyword_end; i++ {
+		keywords[tokens[i]] = i
+	}
+}
+
+// 是否是关键字
+func IsKeyword(name string) bool {
+	_, ok := keywords[name]
+	return ok
+}
+
+// 是否是标识符
+func IsIdentifier(name string) bool {
+	for i, c := range name {
+		if !unicode.IsLetter(c) && c != '_' && (i == 0 || !unicode.IsDigit(c)) {
+			return false
+		}
+	}
+	return name != "" && !IsKeyword(name)
 }
