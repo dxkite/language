@@ -31,6 +31,13 @@ func (p *parser) parse() {
 		switch p.tok {
 		case token.INCLUDE:
 			node = p.parseInclude()
+		case token.ERROR:
+			node = &ast.ErrorStmt{
+				Offset: p.pos,
+				Msg:    p.lit,
+			}
+			p.next()
+			p.scanToMacroEnd()
 		}
 		if node != nil {
 			p.root.Add(node)
