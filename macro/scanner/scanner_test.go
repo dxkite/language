@@ -70,7 +70,7 @@ func TestScanner_Scan(t *testing.T) {
 		{425, token.ENDIF, "#endif"}, {431, token.LF, "\n"},
 		{432, token.SHR, ">>"}, {434, token.GEQ, ">="}, {436, token.OR, "|"}, {437, token.LNOT, "!"}, {438, token.TEXT, " "}, {439, token.LSS, "="}, {440, token.TEXT, " "}, {441, token.NEQ, "!="}, {443, token.TEXT, " "}, {444, token.LEQ, "<="}, {446, token.TEXT, " "}, {447, token.SHL, "<<"}, {449, token.TEXT, " "}, {450, token.SUB, "*"}, {451, token.TEXT, " "}, {452, token.REM, "%"}, {453, token.TEXT, " "}, {454, token.LAND, "&&"}, {456, token.TEXT, " "}, {457, token.AND, "&"}, {458, token.TEXT, " "}, {459, token.LOR, "||"}, {461, token.TEXT, " "}, {462, token.OR, "|"}, {463, token.TEXT, "☺"}, {466, token.IDENT, "中文"}, {472, token.LF, "\n"},
 		{473, token.IF, "#if"}, {476, token.TEXT, " "}, {477, token.LNOT, "!"}, {478, token.DEFINED, "defined"}, {485, token.TEXT, " "}, {486, token.IDENT, "A"}, {487, token.LF, "\n"},
-		{488, token.ELSEIF, "#elif"}, {493, token.TEXT, " "}, {494, token.INT, "1f"}, {496, token.TEXT, " "}, {497, token.ADD, "+"}, {498, token.TEXT, " "}, {499, token.IDENT, "A"}, {500, token.TEXT, "  "}, {502, token.GTR, ">"}, {503, token.TEXT, " "}, {504, token.INT, "2020uL"}, {510, token.LF, "\n"},
+		{488, token.ELSEIF, "#elif"}, {493, token.TEXT, " "}, {494, token.FLOAT, "1f"}, {496, token.TEXT, " "}, {497, token.ADD, "+"}, {498, token.TEXT, " "}, {499, token.IDENT, "A"}, {500, token.TEXT, "  "}, {502, token.GTR, ">"}, {503, token.TEXT, " "}, {504, token.INT, "2020uL"}, {510, token.LF, "\n"},
 		{511, token.IF_DEFINE, "#ifdef"}, {517, token.TEXT, " "}, {518, token.IDENT, "B"}, {519, token.LF, "\n"},
 		{520, token.ELSE, "#else"}, {525, token.LF, "\n"},
 		{526, token.ELSEIF, "#elif"}, {531, token.LF, "\n"},

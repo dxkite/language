@@ -315,6 +315,7 @@ func (s *Scanner) scanNumber() (tok token.Token, lit string) {
 			s.next()
 		} else if !u && lower(s.ch) == 'f' {
 			s.next()
+			tok = token.FLOAT
 		}
 	}
 
