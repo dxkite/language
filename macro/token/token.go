@@ -202,6 +202,7 @@ var tokenName = [...]string{
 }
 
 type TokenName Token
+type Pos int
 
 func (tok TokenName) String() string {
 	s := ""

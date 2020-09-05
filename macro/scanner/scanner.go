@@ -26,11 +26,11 @@ func (s *Scanner) Init(src []byte) {
 	s.ch = ' '
 	s.offset = 0
 	s.rdOffset = 0
-	s.isLineStart = true
 	s.line = 1
 	s.column = 0
 	s.Err.Reset()
 	s.next()
+	s.isLineStart = true
 }
 
 func (s *Scanner) next() {
@@ -62,8 +62,8 @@ func (s *Scanner) next() {
 	}
 }
 
-func (s *Scanner) Scan() (offset int, tok token.Token, lit string) {
-	offset = s.offset
+func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
+	offset = token.Pos(s.offset)
 	tok = token.TEXT
 	lit = ""
 	if s.ch == '#' && s.isLineStart {
