@@ -66,10 +66,10 @@ type (
 
 	// 宏定义
 	DefineStmt struct {
-		From, To   token.Pos    // 标识符位置
-		Name       *Ident       // 定义的标识符
-		ParamToken []*Ident     // 定义的参数
-		LitList    []MacroLiter // 定义的语句
+		From, To  token.Pos    // 标识符位置
+		Name      *Ident       // 定义的标识符
+		IdentList []*Ident     // 定义的参数
+		LitList   []MacroLiter // 定义的语句
 	}
 
 	// 文件包含语句
@@ -81,9 +81,9 @@ type (
 
 	// 宏调用
 	MacroCallExpr struct {
-		From, To token.Pos // 标识符位置
-		Name     *Ident    // 定义的标识符
-		Params   []Stmt    // 调用的参数
+		From, To  token.Pos // 标识符位置
+		Name      *Ident    // 定义的标识符
+		ParamList []Expr    // 调用的参数列表
 	}
 
 	// 数值/字符串字面量
@@ -200,7 +200,7 @@ func (t *DefineStmt) End() token.Pos { return t.To }
 func (*DefineStmt) stmtNode()        {}
 
 // 是否有参数
-func (t *DefineStmt) hasParam() bool { return len(t.ParamToken) > 0 }
+func (t *DefineStmt) hasParam() bool { return len(t.IdentList) > 0 }
 
 func (t *IncludeStmt) Pos() token.Pos { return t.From }
 func (t *IncludeStmt) End() token.Pos { return t.To }

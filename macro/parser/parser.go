@@ -109,14 +109,12 @@ func (p *parser) parseLine() ast.Stmt {
 	p.next()
 	p.skipWhitespace()
 	node.To, _, node.Line = p.expected(token.INT)
-	p.next()
 	node.To += token.Pos(len(node.Line))
 	p.skipWhitespace()
-	to, tok, path := p.expected(token.STRING, token.LF)
-	if tok == token.STRING {
+	if p.tok == token.STRING {
+		node.Path = p.lit
+		node.To = p.pos + token.Pos(len(p.lit))
 		p.next()
-		node.Path = path
-		node.To = to + token.Pos(len(path))
 	}
 	p.scanToMacroEnd(true)
 	return node
@@ -144,10 +142,9 @@ func (p *parser) parseDefine() ast.Stmt {
 		Name:   name,
 	}
 	node.LitList = []ast.MacroLiter{}
-	p.next()
-
 	if p.tok == token.LPAREN {
-		list, err := p.parseParamToken()
+		p.expected(token.LPAREN)
+		list, err := p.parseIdentList()
 		if err != nil {
 			return &ast.BadExpr{
 				Offset: start,
@@ -155,9 +152,9 @@ func (p *parser) parseDefine() ast.Stmt {
 				Lit:    p.scanner.Lit(start, p.pos),
 			}
 		}
-		node.ParamToken = list
+		p.expected(token.RPAREN)
+		node.IdentList = list
 	}
-
 	p.skipWhitespace()
 	var prev ast.Expr
 	for p.tok != token.EOF && p.tok != token.LF {
@@ -177,10 +174,9 @@ func (p *parser) parseDefine() ast.Stmt {
 	return node
 }
 
-func (p *parser) parseParamToken() (params []*ast.Ident, err error) {
-	p.next()
+func (p *parser) parseIdentList() (params []*ast.Ident, err error) {
 	params = []*ast.Ident{}
-	for p.tok != token.RPAREN && p.tok != token.LF && p.tok != token.EOF {
+	for TokenNotIn(p.tok, token.RPAREN, token.LF, token.EOF) {
 		if p.tok != token.IDENT {
 			goto errExit
 		} else {
@@ -190,8 +186,7 @@ func (p *parser) parseParamToken() (params []*ast.Ident, err error) {
 			})
 			p.next() // ident
 			p.skipWhitespace()
-			if p.tok == token.RPAREN {
-				p.next()
+			if TokenIn(p.tok, token.RPAREN) {
 				return
 			}
 			if p.tok != token.COMMA {
@@ -201,8 +196,9 @@ func (p *parser) parseParamToken() (params []*ast.Ident, err error) {
 			p.skipWhitespace()
 		}
 	}
+	return
 errExit:
-	msg := fmt.Sprintf("%v may not appear in macro parameter list", p.lit)
+	msg := fmt.Sprintf("%v may not appear in macro parameter list", p.tok)
 	p.error(p.pos, msg)
 	err = errors.New(msg)
 	p.scanToMacroEnd(false)
@@ -248,10 +244,10 @@ func (p *parser) parseMacroCall() (node ast.MacroLiter) {
 		Offset: p.pos,
 		Name:   p.lit,
 	}
-	p.next()
+	p.expected(token.IDENT)
 	p.skipWhitespace()
 	if p.tok == token.LPAREN {
-		node = &ast.MacroCallExpr{
+		node = &ast.MacroCallExpr {
 			From: p.pos, To: name.End(),
 			Name: name,
 		}
@@ -285,7 +281,20 @@ func (p *parser) expected(typ ...token.Token) (pos token.Pos, tok token.Token, l
 	if !tokenIn(tok, typ) {
 		p.errorf(pos, "expected %v token, got %v", typ, tok)
 	}
+	p.next()
 	return
+}
+
+func TokenNotIn(tok token.Token, typ ...token.Token) bool {
+	return !tokenIn(tok, typ)
+}
+
+func isMacroEnd(tok token.Token) bool {
+	return TokenIn(tok, token.EOF, token.LF)
+}
+
+func TokenIn(tok token.Token, typ ...token.Token) bool {
+	return tokenIn(tok, typ)
 }
 
 func tokenIn(tok token.Token, typ []token.Token) bool {
@@ -308,10 +317,8 @@ func (p *parser) skipWhitespace() string {
 
 func (p *parser) scanToMacroEnd(needEmpty bool) string {
 	lit := ""
-	for p.tok != token.LF && p.tok != token.EOF {
-		isEmptyText := p.tok == token.TEXT && len(strings.TrimSpace(p.lit)) >= 0
-		isComment := p.tok == token.COMMENT || p.tok == token.BLOCK_COMMENT
-		if needEmpty && !isEmptyText && !isComment {
+	for !isMacroEnd(p.tok) {
+		if needEmpty && !p.curIsComment() && !p.curIsEmpty() {
 			p.errorf(p.pos, "unexpected token %v after %v", p.tok, token.INCLUDE)
 		}
 		lit += p.lit
@@ -322,6 +329,17 @@ func (p *parser) scanToMacroEnd(needEmpty bool) string {
 	}
 	return lit
 }
+
+// 当前为空
+func (p *parser) curIsEmpty() bool {
+	return p.tok == token.TEXT && len(strings.TrimSpace(p.lit)) == 0
+}
+
+// 当前为空
+func (p *parser) curIsComment() bool {
+	return p.tok == token.COMMENT || p.tok == token.BLOCK_COMMENT
+}
+
 
 func (p *parser) error(pos token.Pos, msg string) {
 	fmt.Println("error", pos, msg)

@@ -164,7 +164,7 @@ func TestParse(t *testing.T) {
 						Offset: 26,
 						Name:   "A",
 					},
-					ParamToken: []*ast.Ident{
+					IdentList: []*ast.Ident{
 						{
 							Offset: 28,
 							Name:   "x",
