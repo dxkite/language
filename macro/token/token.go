@@ -11,10 +11,11 @@ type Token int
 // The list of tokens.
 const (
 	// Special tokens
-	ILLEGAL Token = iota
-	EOF           // end of file
-	COMMENT       // comment
-	TEXT          // code text
+	ILLEGAL       Token = iota
+	EOF                 // end of file
+	BLOCK_COMMENT       // comment
+	COMMENT             // comment
+	TEXT                // code text
 
 	literal_beg
 	// Identifiers and basic type literals
@@ -81,9 +82,10 @@ const (
 var tokens = [...]string{
 	ILLEGAL: "ILLEGAL",
 
-	EOF:     "EOF",
-	COMMENT: "COMMENT",
-	TEXT:    "TEXT",
+	EOF:           "EOF",
+	BLOCK_COMMENT: "BLOCK_COMMENT",
+	COMMENT:       "COMMENT",
+	TEXT:          "TEXT",
 
 	IDENT:  "IDENT",
 	INT:    "INT",
@@ -153,52 +155,53 @@ func (tok Token) IsOperator() bool { return operator_beg < tok && tok < operator
 func (tok Token) IsKeyword() bool { return keyword_beg < tok && tok < keyword_end }
 
 var tokenName = [...]string{
-	ILLEGAL:      "ILLEGAL",
-	EOF:          "EOF",
-	COMMENT:      "COMMENT",
-	TEXT:         "TEXT",
-	IDENT:        "IDENT",
-	INT:          "INT",
-	FLOAT:        "FLOAT",
-	CHAR:         "CHAR",
-	STRING:       "STRING",
-	ADD:          "ADD",
-	SUB:          "SUB",
-	MUL:          "MUL",
-	QUO:          "QUO",
-	REM:          "REM",
-	AND:          "AND",
-	OR:           "OR",
-	XOR:          "XOR",
-	SHL:          "SHL",
-	SHR:          "SHR",
-	NOT:          "NOT",
-	LAND:         "LAND",
-	LOR:          "LOR",
-	LNOT:         "LNOT",
-	EQL:          "EQL",
-	LSS:          "LSS",
-	GTR:          "GTR",
-	NEQ:          "NEQ",
-	LEQ:          "LEQ",
-	GEQ:          "GEQ",
-	SHARP:        "SHARP",
-	DOUBLE_SHARP: "DOUBLE_SHARP",
-	LF:           "LF",
-	LPAREN:       "LPAREN",
-	COMMA:        "COMMA",
-	RPAREN:       "RPAREN",
-	INCLUDE:      "INCLUDE",
-	IF:           "IF",
-	IF_DEFINE:    "IF_DEFINE",
-	IF_NO_DEFINE: "IF_NO_DEFINE",
-	ELSE:         "ELSE",
-	ELSEIF:       "ELSEIF",
-	ENDIF:        "ENDIF",
-	LINE:         "LINE",
-	ERROR:        "ERROR",
-	NOP:          "NOP",
-	DEFINED:      "DEFINED",
+	ILLEGAL:       "ILLEGAL",
+	EOF:           "EOF",
+	BLOCK_COMMENT: "BLOCK_COMMENT",
+	COMMENT:       "COMMENT",
+	TEXT:          "TEXT",
+	IDENT:         "IDENT",
+	INT:           "INT",
+	FLOAT:         "FLOAT",
+	CHAR:          "CHAR",
+	STRING:        "STRING",
+	ADD:           "ADD",
+	SUB:           "SUB",
+	MUL:           "MUL",
+	QUO:           "QUO",
+	REM:           "REM",
+	AND:           "AND",
+	OR:            "OR",
+	XOR:           "XOR",
+	SHL:           "SHL",
+	SHR:           "SHR",
+	NOT:           "NOT",
+	LAND:          "LAND",
+	LOR:           "LOR",
+	LNOT:          "LNOT",
+	EQL:           "EQL",
+	LSS:           "LSS",
+	GTR:           "GTR",
+	NEQ:           "NEQ",
+	LEQ:           "LEQ",
+	GEQ:           "GEQ",
+	SHARP:         "SHARP",
+	DOUBLE_SHARP:  "DOUBLE_SHARP",
+	LF:            "LF",
+	LPAREN:        "LPAREN",
+	COMMA:         "COMMA",
+	RPAREN:        "RPAREN",
+	INCLUDE:       "INCLUDE",
+	IF:            "IF",
+	IF_DEFINE:     "IF_DEFINE",
+	IF_NO_DEFINE:  "IF_NO_DEFINE",
+	ELSE:          "ELSE",
+	ELSEIF:        "ELSEIF",
+	ENDIF:         "ENDIF",
+	LINE:          "LINE",
+	ERROR:         "ERROR",
+	NOP:           "NOP",
+	DEFINED:       "DEFINED",
 }
 
 type TokenName Token

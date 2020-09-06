@@ -238,8 +238,9 @@ func (s *Scanner) scanToMacroEnd() string {
 }
 
 // 扫描代码注释
-func (s *Scanner) scanComment() string {
+func (s *Scanner) scanComment() (tok token.Token, lit string) {
 	offs := s.offset - 1
+	tok = token.COMMENT
 	if s.ch == '/' {
 		s.next()
 		for s.ch != '\n' && s.ch >= 0 {
@@ -248,6 +249,7 @@ func (s *Scanner) scanComment() string {
 		goto exit
 	}
 	if s.ch == '*' {
+		tok = token.BLOCK_COMMENT
 		s.next()
 		for s.ch != '*' && s.peek() != '/' {
 			if s.ch < 0 {
@@ -260,7 +262,8 @@ func (s *Scanner) scanComment() string {
 		s.next() // /
 	}
 exit:
-	return string(s.src[offs:s.offset])
+	lit = string(s.src[offs:s.offset])
+	return
 }
 
 // 扫描数字
@@ -337,7 +340,7 @@ func (s *Scanner) scanNumberBase(base int) {
 }
 
 // 扫描非宏区域的代码
-// token.COMMENT
+// token.BLOCK_COMMENT
 func (s *Scanner) scanOutMacroToken() (tok token.Token, lit string) {
 	offset := s.offset
 	switch ch := s.ch; {
@@ -363,9 +366,7 @@ func (s *Scanner) scanOutMacroToken() (tok token.Token, lit string) {
 		switch ch {
 		case '/':
 			if s.ch == '*' || s.ch == '/' {
-				c := s.scanComment()
-				tok = token.COMMENT
-				lit = c
+				tok, lit = s.scanComment()
 				return
 			} else {
 				tok = token.QUO
