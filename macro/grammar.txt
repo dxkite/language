@@ -105,8 +105,9 @@ bit_expression  =
  /  ( expression ( "&" / "^" / "<<" /  ">>" ) expression  )  .
 
 macro_param =
-    expression
-    / "text not , "
+    identifier
+    / macro_params_expression
+    / "text not , " .
 
 macro_argument_list  =
     macro_param  <  "," macro_param  >  .

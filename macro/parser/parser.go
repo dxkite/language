@@ -4,6 +4,7 @@ import (
 	"dxkite.cn/language/macro/ast"
 	"dxkite.cn/language/macro/scanner"
 	"dxkite.cn/language/macro/token"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -44,7 +45,7 @@ func (p *parser) parse() {
 		case token.IF:
 			node = p.parseIf()
 		default:
-			node = &ast.BadToken{Offset: p.pos, Token: p.tok, Lit: p.lit}
+			node = &ast.BadExpr{Offset: p.pos, Token: p.tok, Lit: p.lit}
 			p.next()
 		}
 		if node != nil {
@@ -130,7 +131,10 @@ func (p *parser) parseNop() ast.Stmt {
 	return node
 }
 
+// define_statement    =
+//    ( macro_prefix "#define" define_literal code_line ) .
 func (p *parser) parseDefine() ast.Stmt {
+	start := p.pos
 	node := &ast.DefineStmt{From: p.pos}
 	p.next()
 	p.skipWhitespace()
@@ -141,6 +145,19 @@ func (p *parser) parseDefine() ast.Stmt {
 	}
 	node.LitList = []ast.MacroLiter{}
 	p.next()
+
+	if p.tok == token.LPAREN {
+		list, err := p.parseParamToken()
+		if err != nil {
+			return &ast.BadExpr{
+				Offset: start,
+				Token:  token.DEFINE,
+				Lit:    p.scanner.Lit(start, p.pos),
+			}
+		}
+		node.ParamToken = list
+	}
+
 	p.skipWhitespace()
 	var prev ast.Expr
 	for p.tok != token.EOF && p.tok != token.LF {
@@ -160,6 +177,39 @@ func (p *parser) parseDefine() ast.Stmt {
 	return node
 }
 
+func (p *parser) parseParamToken() (params []*ast.Ident, err error) {
+	p.next()
+	params = []*ast.Ident{}
+	for p.tok != token.RPAREN && p.tok != token.LF && p.tok != token.EOF {
+		if p.tok != token.IDENT {
+			goto errExit
+		} else {
+			params = append(params, &ast.Ident{
+				Offset: p.pos,
+				Name:   p.lit,
+			})
+			p.next() // ident
+			p.skipWhitespace()
+			if p.tok == token.RPAREN {
+				p.next()
+				return
+			}
+			if p.tok != token.COMMA {
+				goto errExit
+			}
+			p.next() // ,
+			p.skipWhitespace()
+		}
+	}
+errExit:
+	msg := fmt.Sprintf("%v may not appear in macro parameter list", p.lit)
+	p.error(p.pos, msg)
+	err = errors.New(msg)
+	p.scanToMacroEnd(false)
+	return
+}
+
+//
 func (p *parser) parseMacroLit() (node ast.MacroLiter) {
 	pos, tok, name := p.pos, p.tok, p.lit
 	switch tok {

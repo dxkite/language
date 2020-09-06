@@ -133,6 +133,68 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			"parse define macro function",
+			[]byte("#define A 123'#bb\n#define A(x, y) x#y\n#define A(x"),
+			&ast.BlockStmt{Stmts: []ast.Stmt{
+				&ast.DefineStmt{
+					From: 0, To: 17,
+					Name: &ast.Ident{
+						Offset: 8,
+						Name:   "A",
+					},
+					LitList: []ast.MacroLiter{
+						&ast.Text{
+							Offset: 10,
+							Text:   "123'",
+						},
+						&ast.UnaryExpr{
+							Offset: 14,
+							Op:     token.SHARP,
+							X: &ast.Ident{
+								Offset: 15,
+								Name:   "bb",
+							},
+						},
+					},
+				},
+				&ast.DefineStmt{
+					From: 18, To: 37,
+					Name: &ast.Ident{
+						Offset: 26,
+						Name:   "A",
+					},
+					ParamToken: []*ast.Ident{
+						{
+							Offset: 28,
+							Name:   "x",
+						}, {
+							Offset: 31,
+							Name:   "y",
+						},
+					},
+					LitList: []ast.MacroLiter{
+						&ast.Ident{
+							Offset: 34,
+							Name:   "x",
+						},
+						&ast.UnaryExpr{
+							Offset: 35,
+							Op:     token.SHARP,
+							X: &ast.Ident{
+								Offset: 36,
+								Name:   "y",
+							},
+						},
+					},
+				},
+				&ast.BadExpr{
+					Offset: 38,
+					Token:  token.DEFINE,
+					Lit:    "#define A(x",
+				},
+			}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

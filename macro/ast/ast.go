@@ -35,8 +35,8 @@ const (
 )
 
 type (
-	// 错误
-	BadToken struct {
+	// 错误表达式
+	BadExpr struct {
 		Offset token.Pos // 标识符位置
 		Token  token.Token
 		Lit    string
@@ -133,15 +133,15 @@ type (
 		X      Expr        // 左值
 		Offset token.Pos   // 标识符位置
 		Op     token.Token // 操作类型
-		Y      Expr        // r右值
+		Y      Expr        // 右值
 	}
 )
 
 //------ Node
-func (t *BadToken) Pos() token.Pos { return t.Offset }
-func (t *BadToken) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Lit)) }
-func (*BadToken) exprNode()        {}
-func (*BadToken) stmtNode()        {}
+func (t *BadExpr) Pos() token.Pos { return t.Offset }
+func (t *BadExpr) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Lit)) }
+func (*BadExpr) exprNode()        {}
+func (*BadExpr) stmtNode()        {}
 
 func (t *Ident) Pos() token.Pos { return t.Offset }
 func (t *Ident) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Name)) }

@@ -141,6 +141,11 @@ func (s *Scanner) scanString() string {
 	return string(s.src[offs:s.offset])
 }
 
+// 获取字面量
+func (s *Scanner) Lit(start, stop token.Pos) string {
+	return string(s.src[start:stop])
+}
+
 // 尝试解析字符串
 func (s *Scanner) tryString() bool {
 	s.save()
