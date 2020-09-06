@@ -34,6 +34,7 @@ STR(a 123 41'2/24"51 12, 'b')
 #ifdef B
 #else
 #elif
+#define A 123
 # hello world
 #line 30 "test.c" 012345678
 #error b is \ 
@@ -74,12 +75,13 @@ func TestScanner_Scan(t *testing.T) {
 		{511, token.IF_DEFINE, "#ifdef"}, {517, token.TEXT, " "}, {518, token.IDENT, "B"}, {519, token.LF, "\n"},
 		{520, token.ELSE, "#else"}, {525, token.LF, "\n"},
 		{526, token.ELSEIF, "#elif"}, {531, token.LF, "\n"},
-		{532, token.NOP, "# hello"}, {539, token.TEXT, " "}, {540, token.IDENT, "world"}, {545, token.LF, "\n"},
-		{546, token.LINE, "#line"}, {551, token.TEXT, " "}, {552, token.INT, "30"}, {554, token.TEXT, " "}, {555, token.STRING, "\"test.c\""}, {563, token.TEXT, " "}, {564, token.INT, "01234567"}, {572, token.INT, "8"}, {573, token.LF, "\n"},
-		{574, token.ERROR, "#error b is \\ \n\tdefined"}, {597, token.LF, "\n"},
-		{598, token.ERROR, "#error b is \\ 12 "}, {615, token.LF, "\n"},
-		{616, token.TEXT, "\t"}, {617, token.DEFINED, "defined"}, {624, token.LF, "\n"},
-		{625, token.ENDIF, "#endif"}, {631, token.EOF, ""},
+		{532, token.DEFINE, "#define"}, {539, token.TEXT, " "}, {540, token.IDENT, "A"}, {541, token.TEXT, " "}, {542, token.INT, "123"}, {545, token.LF, "\n"},
+		{546, token.NOP, "# hello"}, {553, token.TEXT, " "}, {554, token.IDENT, "world"}, {559, token.LF, "\n"},
+		{560, token.LINE, "#line"}, {565, token.TEXT, " "}, {566, token.INT, "30"}, {568, token.TEXT, " "}, {569, token.STRING, "\"test.c\""}, {577, token.TEXT, " "}, {578, token.INT, "01234567"}, {586, token.INT, "8"}, {587, token.LF, "\n"},
+		{588, token.ERROR, "#error b is \\ \n\tdefined"}, {611, token.LF, "\n"},
+		{612, token.ERROR, "#error b is \\ 12 "}, {629, token.LF, "\n"},
+		{630, token.TEXT, "\t"}, {631, token.DEFINED, "defined"}, {638, token.LF, "\n"},
+		{639, token.ENDIF, "#endif"}, {645, token.EOF, ""},
 	}
 
 	errors := ErrorList{

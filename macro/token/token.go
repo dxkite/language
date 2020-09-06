@@ -75,6 +75,7 @@ const (
 	LINE
 	ERROR
 	DEFINED
+	DEFINE
 	NOP
 	keyword_end
 )
@@ -135,6 +136,7 @@ var tokens = [...]string{
 	ERROR:        "#error",
 	NOP:          "#",
 	DEFINED:      "defined",
+	DEFINE:       "#define",
 }
 
 func (tok Token) String() string {
@@ -202,6 +204,7 @@ var tokenName = [...]string{
 	ERROR:         "ERROR",
 	NOP:           "NOP",
 	DEFINED:       "DEFINED",
+	DEFINE:        "DEFINE",
 }
 
 type TokenName Token

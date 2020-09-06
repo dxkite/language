@@ -114,6 +114,8 @@ func (s *Scanner) scanMacroToken() (tok token.Token, lit string) {
 			tok = token.ENDIF
 		case "line":
 			tok = token.LINE
+		case "define":
+			tok = token.DEFINE
 		case "error":
 			tok = token.ERROR
 			s.scanToMacroEnd()
