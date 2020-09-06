@@ -56,6 +56,8 @@ const (
 
 	SHARP        //#
 	DOUBLE_SHARP //##
+	QUOTE        // ’
+	DOUBLE_QUOTE // "
 
 	LPAREN // (
 	COMMA  // ,
@@ -120,6 +122,8 @@ var tokens = [...]string{
 	GEQ:          ">=",
 	SHARP:        "#",
 	DOUBLE_SHARP: "##",
+	QUOTE:        "'",
+	DOUBLE_QUOTE: "\"",
 	LF:           "\\n",
 	LPAREN:       "(",
 	COMMA:        ",",
@@ -189,6 +193,8 @@ var tokenName = [...]string{
 	GEQ:           "GEQ",
 	SHARP:         "SHARP",
 	DOUBLE_SHARP:  "DOUBLE_SHARP",
+	QUOTE:         "QUOTE",
+	DOUBLE_QUOTE:  "DOUBLE_QUOTE",
 	LF:            "LF",
 	LPAREN:        "LPAREN",
 	COMMA:         "COMMA",

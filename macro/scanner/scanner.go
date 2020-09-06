@@ -469,6 +469,12 @@ func (s *Scanner) scanOutMacroToken() (tok token.Token, lit string) {
 				tok = token.SHARP
 				lit = "#"
 			}
+		case '\'':
+			tok = token.QUOTE
+			lit = string(ch)
+		case '"':
+			tok = token.DOUBLE_QUOTE
+			lit = string(ch)
 		case -1:
 			tok = token.EOF
 		default:
@@ -484,12 +490,6 @@ func (s *Scanner) scanOutMacroToken() (tok token.Token, lit string) {
 
 func (s *Scanner) isEndOfText() bool {
 	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("/'\"(),+-*%&|=^~<>!\n#", string(s.ch)) {
-		if s.ch == '\'' {
-			return s.tryChar()
-		}
-		if s.ch == '"' {
-			return s.tryString()
-		}
 		return true
 	}
 	return false
