@@ -146,6 +146,7 @@ func (*BadToken) stmtNode()        {}
 func (t *Ident) Pos() token.Pos { return t.Offset }
 func (t *Ident) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Name)) }
 func (*Ident) exprNode()        {}
+func (*Ident) litNode()         {}
 
 func (t *Text) Pos() token.Pos { return t.Offset }
 func (t *Text) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Text)) }
@@ -163,6 +164,11 @@ func (t Text) IsEmpty() bool {
 		}
 	}
 	return true
+}
+
+// 尾部添加
+func (t *Text) Append(m *Text) {
+	t.Text += m.Text
 }
 
 func (t *Comment) Pos() token.Pos { return t.Offset }

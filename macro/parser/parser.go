@@ -37,7 +37,7 @@ func (p *parser) parse() {
 			node = p.parseLine()
 		case token.NOP:
 			node = p.parseNop()
-		case token.DEFINED:
+		case token.DEFINE:
 			node = p.parseDefine()
 		case token.COMMENT, token.BLOCK_COMMENT:
 			node = p.parseComment()
@@ -45,6 +45,7 @@ func (p *parser) parse() {
 			node = p.parseIf()
 		default:
 			node = &ast.BadToken{Offset: p.pos, Token: p.tok, Lit: p.lit}
+			p.next()
 		}
 		if node != nil {
 			p.root.Add(node)
@@ -131,7 +132,76 @@ func (p *parser) parseNop() ast.Stmt {
 
 func (p *parser) parseDefine() ast.Stmt {
 	node := &ast.DefineStmt{From: p.pos}
+	p.next()
+	p.skipWhitespace()
+	pos, _, name := p.expected(token.IDENT)
+	node.Name = &ast.Ident{
+		Offset: pos,
+		Name:   name,
+	}
+	node.LitList = []ast.MacroLiter{}
+	p.next()
+	p.skipWhitespace()
+	var prev ast.Expr
+	for p.tok != token.EOF && p.tok != token.LF {
+		lit := p.parseMacroLit()
+		// 合并text节点
+		p, pok := prev.(*ast.Text)
+		t, tok := lit.(*ast.Text)
+		if pok && tok {
+			p.Append(t)
+		} else {
+			node.LitList = append(node.LitList, lit)
+			prev = lit
+		}
+		node.To = lit.End()
+	}
+	p.scanToMacroEnd(true)
 	return node
+}
+
+func (p *parser) parseMacroLit() (node ast.MacroLiter) {
+	pos, tok, name := p.pos, p.tok, p.lit
+	switch tok {
+	case token.SHARP:
+		p.next()
+		offs, _, name := p.expected(token.IDENT)
+		p.next()
+		node = &ast.UnaryExpr{
+			Offset: pos,
+			Op:     token.SHARP,
+			X: &ast.Ident{
+				Offset: offs,
+				Name:   name,
+			},
+		}
+	case token.IDENT:
+		node = p.parseMacroCall()
+	default:
+		node = &ast.Text{
+			Offset: pos,
+			Text:   name,
+		}
+		p.next()
+	}
+	return
+}
+
+func (p *parser) parseMacroCall() (node ast.MacroLiter) {
+	name := &ast.Ident{
+		Offset: p.pos,
+		Name:   p.lit,
+	}
+	p.next()
+	p.skipWhitespace()
+	if p.tok == token.LPAREN {
+		node = &ast.MacroCallExpr{
+			From: p.pos, To: name.End(),
+			Name: name,
+		}
+		return
+	}
+	return name
 }
 
 func (p *parser) parseComment() ast.Stmt {
@@ -171,11 +241,13 @@ func tokenIn(tok token.Token, typ []token.Token) bool {
 	return false
 }
 
-func (p *parser) skipWhitespace() {
+func (p *parser) skipWhitespace() string {
+	t := ""
 	for p.tok == token.TEXT && len(strings.TrimSpace(p.lit)) == 0 {
+		t += p.lit
 		p.next()
 	}
-	return
+	return t
 }
 
 func (p *parser) scanToMacroEnd(needEmpty bool) string {

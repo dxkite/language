@@ -2,6 +2,7 @@ package parser
 
 import (
 	"dxkite.cn/language/macro/ast"
+	"dxkite.cn/language/macro/token"
 	"reflect"
 	"testing"
 )
@@ -73,6 +74,50 @@ func TestParse(t *testing.T) {
 				&ast.ErrorStmt{
 					Offset: 30,
 					Msg:    "#error no op find",
+				},
+			}},
+		},
+		{
+			"parse simple define",
+			[]byte("#define A 123'#bb\n#define A 123'bb"),
+			&ast.BlockStmt{Stmts: []ast.Stmt{
+				&ast.DefineStmt{
+					From: 0, To: 17,
+					Name: &ast.Ident{
+						Offset: 8,
+						Name:   "A",
+					},
+					LitList: []ast.MacroLiter{
+						&ast.Text{
+							Offset: 10,
+							Text:   "123'",
+						},
+						&ast.UnaryExpr{
+							Offset: 14,
+							Op:     token.SHARP,
+							X: &ast.Ident{
+								Offset: 15,
+								Name:   "bb",
+							},
+						},
+					},
+				},
+				&ast.DefineStmt{
+					From: 18, To: 34,
+					Name: &ast.Ident{
+						Offset: 26,
+						Name:   "A",
+					},
+					LitList: []ast.MacroLiter{
+						&ast.Text{
+							Offset: 28,
+							Text:   "123'",
+						},
+						&ast.Ident{
+							Offset: 32,
+							Name:   "bb",
+						},
+					},
 				},
 			}},
 		},
