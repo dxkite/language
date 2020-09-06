@@ -14,6 +14,12 @@ type Expr interface {
 	exprNode()
 }
 
+// 宏字面量
+type MacroLiter interface {
+	Expr
+	litNode()
+}
+
 // 语句
 type Stmt interface {
 	Node
@@ -29,6 +35,13 @@ const (
 )
 
 type (
+	// 错误
+	BadToken struct {
+		Offset token.Pos // 标识符位置
+		Token  token.Token
+		Lit    string
+	}
+
 	// 标识符
 	Ident struct {
 		Offset token.Pos // 标识符位置
@@ -41,8 +54,9 @@ type (
 	}
 	// 注释
 	Comment struct {
-		Offset token.Pos // 标识符位置
-		Text   string    // 文本内容
+		Offset token.Pos   // 标识符位置
+		Kind   token.Token // 注释类型
+		Text   string      // 文本内容
 	}
 
 	// 语句块
@@ -52,10 +66,10 @@ type (
 
 	// 宏定义
 	DefineStmt struct {
-		From, To   token.Pos // 标识符位置
-		Name       *Ident    // 定义的标识符
-		ParamToken []*Ident  // 定义的参数
-		Stmts      []Stmt    // 定义的语句
+		From, To   token.Pos    // 标识符位置
+		Name       *Ident       // 定义的标识符
+		ParamToken []*Ident     // 定义的参数
+		LitList    []MacroLiter // 定义的语句
 	}
 
 	// 文件包含语句
@@ -84,6 +98,13 @@ type (
 	ErrorStmt struct {
 		Offset token.Pos // 标识符位置
 		Msg    string    // 报错文本内容
+	}
+
+	// 行语句
+	LineStmt struct {
+		From, To token.Pos // 标识符位置
+		Line     string    // 文件行
+		Path     string    // 文件名
 	}
 
 	// 无操作宏
@@ -117,6 +138,11 @@ type (
 )
 
 //------ Node
+func (t *BadToken) Pos() token.Pos { return t.Offset }
+func (t *BadToken) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Lit)) }
+func (*BadToken) exprNode()        {}
+func (*BadToken) stmtNode()        {}
+
 func (t *Ident) Pos() token.Pos { return t.Offset }
 func (t *Ident) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Name)) }
 func (*Ident) exprNode()        {}
@@ -124,6 +150,8 @@ func (*Ident) exprNode()        {}
 func (t *Text) Pos() token.Pos { return t.Offset }
 func (t *Text) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Text)) }
 func (*Text) stmtNode()        {}
+func (*Text) exprNode()        {}
+func (*Text) litNode()         {}
 
 // 判断是否为空文本节点
 func (t Text) IsEmpty() bool {
@@ -175,6 +203,7 @@ func (*IncludeStmt) stmtNode()        {}
 func (t *MacroCallExpr) Pos() token.Pos { return t.From }
 func (t *MacroCallExpr) End() token.Pos { return t.To }
 func (*MacroCallExpr) exprNode()        {}
+func (*MacroCallExpr) litNode()         {}
 
 func (t *LitExpr) Pos() token.Pos { return t.Offset }
 func (t *LitExpr) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Value)) }
@@ -183,6 +212,10 @@ func (*LitExpr) exprNode()        {}
 func (t *ErrorStmt) Pos() token.Pos { return t.Offset }
 func (t *ErrorStmt) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Msg)) }
 func (*ErrorStmt) stmtNode()        {}
+
+func (t *LineStmt) Pos() token.Pos { return t.From }
+func (t *LineStmt) End() token.Pos { return t.To }
+func (*LineStmt) stmtNode()        {}
 
 func (t *NopStmt) Pos() token.Pos { return t.Offset }
 func (t *NopStmt) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Text)) }
@@ -195,7 +228,9 @@ func (*IfStmt) stmtNode()        {}
 func (t *UnaryExpr) Pos() token.Pos { return t.Offset }
 func (t *UnaryExpr) End() token.Pos { return t.X.End() }
 func (*UnaryExpr) exprNode()        {}
+func (*UnaryExpr) litNode()         {}
 
 func (t *BinaryExpr) Pos() token.Pos { return t.X.Pos() }
 func (t *BinaryExpr) End() token.Pos { return t.Y.End() }
 func (*BinaryExpr) exprNode()        {}
+func (*BinaryExpr) litNode()         {}
