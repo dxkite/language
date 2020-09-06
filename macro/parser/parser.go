@@ -165,15 +165,21 @@ func (p *parser) parseMacroLit() (node ast.MacroLiter) {
 	switch tok {
 	case token.SHARP:
 		p.next()
-		offs, _, name := p.expected(token.IDENT)
-		p.next()
-		node = &ast.UnaryExpr{
-			Offset: pos,
-			Op:     token.SHARP,
-			X: &ast.Ident{
-				Offset: offs,
-				Name:   name,
-			},
+		offs, typ, lit := p.next()
+		if typ == token.IDENT {
+			node = &ast.UnaryExpr{
+				Offset: pos,
+				Op:     token.SHARP,
+				X: &ast.Ident{
+					Offset: offs,
+					Name:   lit,
+				},
+			}
+		} else {
+			node = &ast.Text{
+				Offset: pos,
+				Text:   name + lit,
+			}
 		}
 	case token.IDENT:
 		node = p.parseMacroCall()

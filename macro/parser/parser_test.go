@@ -79,7 +79,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"parse simple define",
-			[]byte("#define A 123'#bb\n#define A 123'bb"),
+			[]byte("#define A 123'#bb\n#define A 123#123\n#define A 123'bb"),
 			&ast.BlockStmt{Stmts: []ast.Stmt{
 				&ast.DefineStmt{
 					From: 0, To: 17,
@@ -101,9 +101,8 @@ func TestParse(t *testing.T) {
 							},
 						},
 					},
-				},
-				&ast.DefineStmt{
-					From: 18, To: 34,
+				}, &ast.DefineStmt{
+					From: 18, To: 35,
 					Name: &ast.Ident{
 						Offset: 26,
 						Name:   "A",
@@ -111,10 +110,23 @@ func TestParse(t *testing.T) {
 					LitList: []ast.MacroLiter{
 						&ast.Text{
 							Offset: 28,
+							Text:   "123#123",
+						},
+					},
+				},
+				&ast.DefineStmt{
+					From: 36, To: 52,
+					Name: &ast.Ident{
+						Offset: 44,
+						Name:   "A",
+					},
+					LitList: []ast.MacroLiter{
+						&ast.Text{
+							Offset: 46,
 							Text:   "123'",
 						},
 						&ast.Ident{
-							Offset: 32,
+							Offset: 50,
 							Name:   "bb",
 						},
 					},
