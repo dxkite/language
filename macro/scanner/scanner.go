@@ -76,14 +76,10 @@ func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
 
 func lower(ch rune) rune     { return ('a' - 'A') | ch } // returns lower-case ch iff ch is ASCII letter
 func isDecimal(ch rune) bool { return '0' <= ch && ch <= '9' }
-func isDecimalBase(ch rune, base int) bool {
-	max := '0' + base - 1
-	return '0' <= ch && ch <= rune(max)
-}
 
 func isHex(ch rune) bool { return '0' <= ch && ch <= '9' || 'a' <= lower(ch) && lower(ch) <= 'f' }
 func isLetter(ch rune) bool {
-	return 'a' <= lower(ch) && lower(ch) <= 'z' || ch == '_' || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
+	return 'a' <= lower(ch) && lower(ch) <= 'z' || ch == '_' || ch == '$' || ch >= utf8.RuneSelf && unicode.IsLetter(ch)
 }
 func isDigit(ch rune) bool {
 	return isDecimal(ch) || ch >= utf8.RuneSelf && unicode.IsDigit(ch)
@@ -311,26 +307,22 @@ func (s *Scanner) scanNumber() (tok token.Token, lit string) {
 		s.scanNumberBase(10)
 	}
 
-	if base == 10 || base == 16 {
+	for isLetter(s.ch) || isDecimal(s.ch) {
 		if lower(s.ch) == 'u' {
 			u = true
-			s.next()
 		}
-		if lower(s.ch) == 'l' {
-			s.next()
-		} else if !u && lower(s.ch) == 'f' {
-			s.next()
+		if !u && lower(s.ch) == 'f' {
 			tok = token.FLOAT
 		}
+		s.next()
 	}
-
 	lit = string(s.src[offs:s.offset])
 	return
 }
 
 func (s *Scanner) scanNumberBase(base int) {
 	if base <= 10 {
-		for isDecimalBase(s.ch, base) {
+		for isDecimal(s.ch) {
 			s.next()
 		}
 	} else {

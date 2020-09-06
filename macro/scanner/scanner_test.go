@@ -34,7 +34,7 @@ STR(a 123 41'2/24"51 12, 'b')
 #ifdef B
 #else
 #elif
-#define A 123
+#define $A 123
 # hello world
 #line 30 "test.c" 012345678
 #error b is \ 
@@ -42,10 +42,13 @@ STR(a 123 41'2/24"51 12, 'b')
 #error b is \ 12 
 	defined
 #endif
-#define A(a) 123#a
-#define B(v) A(123v awd)
-#define C B(abc aa)
-123C`)
+#if 123BCDE123
+int ch = 123;
+#endif
+#define $A(a) 123#a
+#define B(v) $A(123v awd)
+B(awd)
+123B`)
 
 func TestScanner_Scan(t *testing.T) {
 	s := &Scanner{}
@@ -65,7 +68,7 @@ func TestScanner_Scan(t *testing.T) {
 		{173, token.ERROR, "#  error something error"}, {197, token.LF, "\n"},
 		{198, token.IDENT, "int"}, {201, token.TEXT, " "}, {202, token.IDENT, "main"}, {206, token.LPAREN, "("}, {207, token.RPAREN, ")"}, {208, token.TEXT, " "}, {209, token.DOUBLE_QUOTE, "\""}, {210, token.TEXT, " {      "}, {218, token.COMMENT, "// comment"}, {228, token.LF, "\n"},
 		{229, token.TEXT, "\t"}, {230, token.IDENT, "MAX"}, {233, token.TEXT, " "}, {234, token.BLOCK_COMMENT, "/*\nblock comment\n*/"}, {253, token.LF, "\n"},
-		{254, token.TEXT, "\t"}, {255, token.INT, "0b101010"}, {263, token.INT, "2345"}, {267, token.XOR, "^"}, {268, token.INT, "0b1"}, {271, token.INT, "24"}, {273, token.LF, "\n"},
+		{254, token.TEXT, "\t"}, {255, token.INT, "0b1010102345"}, {267, token.XOR, "^"}, {268, token.INT, "0b124"}, {273, token.LF, "\n"},
 		{274, token.TEXT, "\t"}, {275, token.NOT, "~"}, {276, token.INT, "22"}, {278, token.LF, "\n"},
 		{279, token.TEXT, "\t"}, {280, token.BLOCK_COMMENT, "/* some comment */"}, {298, token.IDENT, "printf"}, {304, token.LPAREN, "("}, {305, token.STRING, "\"hello \\\" world\""}, {321, token.COMMA, ","}, {322, token.INT, "12"}, {324, token.TEXT, " "}, {325, token.INT, "342"}, {328, token.COMMA, ","}, {329, token.TEXT, " "}, {330, token.CHAR, "'\\''"}, {334, token.RPAREN, ")"}, {335, token.TEXT, "; "}, {337, token.BLOCK_COMMENT, "/* some comment */"}, {355, token.LF, "\n"},
 		{356, token.TEXT, "} "}, {358, token.QUOTE, "'"}, {359, token.QUOTE, "'"}, {360, token.LF, "\n"},
@@ -79,17 +82,20 @@ func TestScanner_Scan(t *testing.T) {
 		{511, token.IF_DEFINE, "#ifdef"}, {517, token.TEXT, " "}, {518, token.IDENT, "B"}, {519, token.LF, "\n"},
 		{520, token.ELSE, "#else"}, {525, token.LF, "\n"},
 		{526, token.ELSEIF, "#elif"}, {531, token.LF, "\n"},
-		{532, token.DEFINE, "#define"}, {539, token.TEXT, " "}, {540, token.IDENT, "A"}, {541, token.TEXT, " "}, {542, token.INT, "123"}, {545, token.LF, "\n"},
-		{546, token.NOP, "# hello"}, {553, token.TEXT, " "}, {554, token.IDENT, "world"}, {559, token.LF, "\n"},
-		{560, token.LINE, "#line"}, {565, token.TEXT, " "}, {566, token.INT, "30"}, {568, token.TEXT, " "}, {569, token.STRING, "\"test.c\""}, {577, token.TEXT, " "}, {578, token.INT, "01234567"}, {586, token.INT, "8"}, {587, token.LF, "\n"},
-		{588, token.ERROR, "#error b is \\ \n\tdefined"}, {611, token.LF, "\n"},
-		{612, token.ERROR, "#error b is \\ 12 "}, {629, token.LF, "\n"},
-		{630, token.TEXT, "\t"}, {631, token.DEFINED, "defined"}, {638, token.LF, "\n"},
-		{639, token.ENDIF, "#endif"}, {645, token.LF, "\n"},
-		{646, token.DEFINE, "#define"}, {653, token.TEXT, " "}, {654, token.IDENT, "A"}, {655, token.LPAREN, "("}, {656, token.IDENT, "a"}, {657, token.RPAREN, ")"}, {658, token.TEXT, " "}, {659, token.INT, "123"}, {662, token.SHARP, "#"}, {663, token.IDENT, "a"}, {664, token.LF, "\n"},
-		{665, token.DEFINE, "#define"}, {672, token.TEXT, " "}, {673, token.IDENT, "B"}, {674, token.LPAREN, "("}, {675, token.IDENT, "v"}, {676, token.RPAREN, ")"}, {677, token.TEXT, " "}, {678, token.IDENT, "A"}, {679, token.LPAREN, "("}, {680, token.INT, "123"}, {683, token.IDENT, "v"}, {684, token.TEXT, " "}, {685, token.IDENT, "awd"}, {688, token.RPAREN, ")"}, {689, token.LF, "\n"},
-		{690, token.DEFINE, "#define"}, {697, token.TEXT, " "}, {698, token.IDENT, "C"}, {699, token.TEXT, " "}, {700, token.IDENT, "B"}, {701, token.LPAREN, "("}, {702, token.IDENT, "abc"}, {705, token.TEXT, " "}, {706, token.IDENT, "aa"}, {708, token.RPAREN, ")"}, {709, token.LF, "\n"},
-		{710, token.INT, "123"}, {713, token.IDENT, "C"}, {714, token.EOF, ""},
+		{532, token.DEFINE, "#define"}, {539, token.TEXT, " "}, {540, token.IDENT, "$A"}, {542, token.TEXT, " "}, {543, token.INT, "123"}, {546, token.LF, "\n"},
+		{547, token.NOP, "# hello"}, {554, token.TEXT, " "}, {555, token.IDENT, "world"}, {560, token.LF, "\n"},
+		{561, token.LINE, "#line"}, {566, token.TEXT, " "}, {567, token.INT, "30"}, {569, token.TEXT, " "}, {570, token.STRING, "\"test.c\""}, {578, token.TEXT, " "}, {579, token.INT, "012345678"}, {588, token.LF, "\n"},
+		{589, token.ERROR, "#error b is \\ \n\tdefined"}, {612, token.LF, "\n"},
+		{613, token.ERROR, "#error b is \\ 12 "}, {630, token.LF, "\n"},
+		{631, token.TEXT, "\t"}, {632, token.DEFINED, "defined"}, {639, token.LF, "\n"},
+		{640, token.ENDIF, "#endif"}, {646, token.LF, "\n"},
+		{647, token.IF, "#if"}, {650, token.TEXT, " "}, {651, token.INT, "123BCDE123"}, {661, token.LF, "\n"},
+		{662, token.IDENT, "int"}, {665, token.TEXT, " "}, {666, token.IDENT, "ch"}, {668, token.TEXT, " "}, {669, token.LSS, "="}, {670, token.TEXT, " "}, {671, token.INT, "123"}, {674, token.TEXT, ";"}, {675, token.LF, "\n"},
+		{676, token.ENDIF, "#endif"}, {682, token.LF, "\n"},
+		{683, token.DEFINE, "#define"}, {690, token.TEXT, " "}, {691, token.IDENT, "$A"}, {693, token.LPAREN, "("}, {694, token.IDENT, "a"}, {695, token.RPAREN, ")"}, {696, token.TEXT, " "}, {697, token.INT, "123"}, {700, token.SHARP, "#"}, {701, token.IDENT, "a"}, {702, token.LF, "\n"},
+		{703, token.DEFINE, "#define"}, {710, token.TEXT, " "}, {711, token.IDENT, "B"}, {712, token.LPAREN, "("}, {713, token.IDENT, "v"}, {714, token.RPAREN, ")"}, {715, token.TEXT, " "}, {716, token.IDENT, "$A"}, {718, token.LPAREN, "("}, {719, token.INT, "123v"}, {723, token.TEXT, " "}, {724, token.IDENT, "awd"}, {727, token.RPAREN, ")"}, {728, token.LF, "\n"},
+		{729, token.IDENT, "B"}, {730, token.LPAREN, "("}, {731, token.IDENT, "awd"}, {734, token.RPAREN, ")"}, {735, token.LF, "\n"},
+		{736, token.INT, "123B"}, {740, token.EOF, ""},
 	}
 
 	errors := ErrorList{
