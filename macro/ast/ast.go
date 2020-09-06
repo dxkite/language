@@ -16,7 +16,7 @@ type Expr interface {
 
 // 宏字面量
 type MacroLiter interface {
-	Expr
+	Node
 	litNode()
 }
 
@@ -81,10 +81,14 @@ type (
 
 	// 宏调用
 	MacroCallExpr struct {
-		From, To  token.Pos // 标识符位置
-		Name      *Ident    // 定义的标识符
-		ParamList []Expr    // 调用的参数列表
+		From, To  token.Pos    // 标识符位置
+		Name      *Ident       // 定义的标识符
+		ParamList []MacroLiter // 调用的参数列表
 	}
+
+	// 字面量数组
+	// 参数特用
+	MacroLitArray []MacroLiter
 
 	// 数值/字符串字面量
 	// token.INT token.FLOAT token.STRING token.CHAR
@@ -240,3 +244,18 @@ func (t *BinaryExpr) Pos() token.Pos { return t.X.Pos() }
 func (t *BinaryExpr) End() token.Pos { return t.Y.End() }
 func (*BinaryExpr) exprNode()        {}
 func (*BinaryExpr) litNode()         {}
+
+func (t MacroLitArray) Pos() token.Pos {
+	if len(t) > 0 {
+		return t[0].Pos()
+	}
+	return 0
+}
+func (t MacroLitArray) End() token.Pos {
+	l := len(t)
+	if l > 0 {
+		return t[l-1].End()
+	}
+	return 0
+}
+func (MacroLitArray) litNode() {}

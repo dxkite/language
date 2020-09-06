@@ -17,6 +17,8 @@ type parser struct {
 	tok  token.Token    // Token
 	lit  string         // 内容
 	root *ast.BlockStmt // 根节点
+	// 保存状态
+	state *parser
 }
 
 func (p *parser) init(src []byte) {
@@ -156,7 +158,7 @@ func (p *parser) parseDefine() ast.Stmt {
 		node.IdentList = list
 	}
 	p.skipWhitespace()
-	var prev ast.Expr
+	var prev ast.MacroLiter
 	for p.tok != token.EOF && p.tok != token.LF {
 		lit := p.parseMacroLit()
 		// 合并text节点
@@ -246,14 +248,33 @@ func (p *parser) parseMacroCall() (node ast.MacroLiter) {
 	}
 	p.expected(token.IDENT)
 	p.skipWhitespace()
-	if p.tok == token.LPAREN {
-		node = &ast.MacroCallExpr {
+	// 有调用
+	if p.tok == token.LPAREN && p.tryFind(token.RPAREN) {
+		p.expected(token.LPAREN)
+		node = &ast.MacroCallExpr{
 			From: p.pos, To: name.End(),
 			Name: name,
 		}
 		return
 	}
 	return name
+}
+
+// 尝试找到token
+func (p *parser) tryFind(tok token.Token) bool {
+	p.save()
+	defer p.reset()
+	for !isMacroEnd(p.tok) {
+		if p.tok == tok {
+			return true
+		}
+	}
+	return false
+}
+
+// 解析参数列表
+func (p *parser) parseMacroCallParamLiter() (params []ast.MacroLiter, err error) {
+	return nil, nil
 }
 
 func (p *parser) parseComment() ast.Stmt {
@@ -340,13 +361,31 @@ func (p *parser) curIsComment() bool {
 	return p.tok == token.COMMENT || p.tok == token.BLOCK_COMMENT
 }
 
-
 func (p *parser) error(pos token.Pos, msg string) {
 	fmt.Println("error", pos, msg)
 }
 
 func (s *parser) errorf(pos token.Pos, format string, args ...interface{}) {
 	s.error(pos, fmt.Sprintf(format, args...))
+}
+
+// 保存状态
+func (s *parser) save() {
+	s.state = &parser{
+		scanner: s.scanner,
+		errors:  s.errors,
+		pos:     s.pos,
+		tok:     s.tok,
+		lit:     s.lit,
+	}
+}
+
+// 回复状态
+func (s *parser) reset() {
+	root := s.root
+	*s = *s.state
+	s.state = nil
+	s.root = root
 }
 
 func Parse(src []byte) ast.Node {
