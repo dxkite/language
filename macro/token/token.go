@@ -63,6 +63,7 @@ const (
 	COMMA  // ,
 	RPAREN // )
 	LF     // \n
+	EQU    // =
 
 	operator_end
 
@@ -114,6 +115,7 @@ var tokens = [...]string{
 	LNOT: "!",
 
 	EQL: "==",
+	EQU: "=",
 	LSS: "<",
 	GTR: ">",
 
@@ -196,6 +198,7 @@ var tokenName = [...]string{
 	QUOTE:         "QUOTE",
 	DOUBLE_QUOTE:  "DOUBLE_QUOTE",
 	LF:            "LF",
+	EQU:           "EQU",
 	LPAREN:        "LPAREN",
 	COMMA:         "COMMA",
 	RPAREN:        "RPAREN",

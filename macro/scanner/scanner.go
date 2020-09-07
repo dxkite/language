@@ -411,8 +411,14 @@ func (s *Scanner) scanOutMacroToken() (tok token.Token, lit string) {
 				lit = string(ch)
 			}
 		case '=':
-			tok = token.LSS
-			lit = string(ch)
+			if s.ch == '=' {
+				s.next()
+				tok = token.EQL
+				lit = "=="
+			} else {
+				tok = token.EQU
+				lit = string(ch)
+			}
 		case '^':
 			tok = token.XOR
 			lit = string(ch)
