@@ -54,6 +54,7 @@ const (
 	LEQ // <=
 	GEQ // >=
 
+	MACRO        //#
 	SHARP        //#
 	DOUBLE_SHARP //##
 	QUOTE        // ’
@@ -123,6 +124,7 @@ var tokens = [...]string{
 	NEQ:          "!=",
 	LEQ:          "<=",
 	GEQ:          ">=",
+	MACRO:        "#",
 	SHARP:        "#",
 	DOUBLE_SHARP: "##",
 	QUOTE:        "'",
@@ -195,6 +197,7 @@ var tokenName = [...]string{
 	NEQ:           "NEQ",
 	LEQ:           "LEQ",
 	GEQ:           "GEQ",
+	MACRO:         "MACRO",
 	SHARP:         "SHARP",
 	DOUBLE_SHARP:  "DOUBLE_SHARP",
 	QUOTE:         "QUOTE",
