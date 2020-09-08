@@ -76,6 +76,12 @@ type (
 		Body     MacroLitArray // 定义的语句
 	}
 
+	// 取消定义指令
+	ValUnDefineStmt struct {
+		From, To token.Pos // 标识符位置
+		Name     *Ident    // 定义的标识符
+	}
+
 	// 函数定义
 	FuncDefineStmt struct {
 		From, To  token.Pos     // 标识符位置
@@ -219,6 +225,10 @@ func (t *ValDefineStmt) Pos() token.Pos { return t.From }
 func (t *ValDefineStmt) End() token.Pos { return t.To }
 func (*ValDefineStmt) stmtNode()        {}
 func (*ValDefineStmt) defineNode()      {}
+
+func (t *ValUnDefineStmt) Pos() token.Pos { return t.From }
+func (t *ValUnDefineStmt) End() token.Pos { return t.To }
+func (*ValUnDefineStmt) stmtNode()        {}
 
 func (t *FuncDefineStmt) Pos() token.Pos { return t.From }
 func (t *FuncDefineStmt) End() token.Pos { return t.To }

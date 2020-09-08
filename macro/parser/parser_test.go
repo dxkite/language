@@ -47,6 +47,23 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			"parse undef",
+			[]byte("# error compile error\n#undef A"),
+			&ast.BlockStmt{
+				&ast.ErrorStmt{
+					Offset: 0,
+					Msg:    "# error compile error",
+				},
+				&ast.ValUnDefineStmt{
+					From: 22, To: 30,
+					Name: &ast.Ident{
+						Offset: 29,
+						Name:   "A",
+					},
+				},
+			},
+		},
+		{
 			"parse line",
 			[]byte("#line 99\n#line 98 \"test.c\""),
 			&ast.BlockStmt{

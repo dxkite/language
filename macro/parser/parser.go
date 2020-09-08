@@ -40,6 +40,8 @@ func (p *parser) parse() {
 			node = p.parseNop()
 		case token.DEFINE:
 			node = p.parseDefine()
+		case token.UNDEF:
+			node = p.parseUnDefine()
 		case token.COMMENT, token.BLOCK_COMMENT:
 			node = p.parseComment()
 		case token.IF:
@@ -127,6 +129,24 @@ func (p *parser) parseNop() ast.Stmt {
 	p.next()
 	node.Text += p.scanToMacroEnd(false)
 	return node
+}
+
+func (p *parser) parseUnDefine() ast.Stmt {
+	start := p.pos
+	p.next()
+	p.skipWhitespace()
+	pos, _, name := p.expected(token.IDENT)
+	id := &ast.Ident{
+		Offset: pos,
+		Name:   name,
+	}
+	end := p.pos
+	p.scanToMacroEnd(true)
+	return &ast.ValUnDefineStmt{
+		From: start,
+		To:   end,
+		Name: id,
+	}
 }
 
 // define_statement    =
