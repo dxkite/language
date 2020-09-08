@@ -99,15 +99,17 @@ func (s *Scanner) scanMacroToken() (tok token.Token, lit string) {
 		case "if":
 			tok = token.IF
 		case "ifdef":
-			tok = token.IF_DEFINE
+			tok = token.IFDEF
 		case "ifndef":
-			tok = token.IF_NO_DEFINE
+			tok = token.IFNODEF
 		case "else":
 			tok = token.ELSE
 		case "elif":
 			tok = token.ELSEIF
 		case "endif":
 			tok = token.ENDIF
+		case "undef":
+			tok = token.UNDEF
 		case "line":
 			tok = token.LINE
 		case "define":

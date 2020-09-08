@@ -70,11 +70,12 @@ const (
 	keyword_beg
 	INCLUDE
 	IF
-	IF_DEFINE
-	IF_NO_DEFINE
+	IFDEF
+	IFNODEF
 	ELSE
 	ELSEIF
 	ENDIF
+	UNDEF
 	LINE
 	ERROR
 	DEFINED
@@ -131,18 +132,19 @@ var tokens = [...]string{
 	COMMA:        ",",
 	RPAREN:       ")",
 
-	INCLUDE:      "#include",
-	IF:           "#if",
-	IF_DEFINE:    "#ifdef",
-	IF_NO_DEFINE: "#ifndef",
-	ELSE:         "#else",
-	ELSEIF:       "#elif",
-	ENDIF:        "#endif",
-	LINE:         "#line",
-	ERROR:        "#error",
-	NOP:          "#",
-	DEFINED:      "defined",
-	DEFINE:       "#define",
+	INCLUDE: "#include",
+	IF:      "#if",
+	IFDEF:   "#ifdef",
+	IFNODEF: "#ifndef",
+	ELSE:    "#else",
+	ELSEIF:  "#elif",
+	ENDIF:   "#endif",
+	UNDEF:   "#undef",
+	LINE:    "#line",
+	ERROR:   "#error",
+	NOP:     "#",
+	DEFINED: "defined",
+	DEFINE:  "#define",
 }
 
 func (tok Token) String() string {
@@ -204,8 +206,9 @@ var tokenName = [...]string{
 	RPAREN:        "RPAREN",
 	INCLUDE:       "INCLUDE",
 	IF:            "IF",
-	IF_DEFINE:     "IF_DEFINE",
-	IF_NO_DEFINE:  "IF_NO_DEFINE",
+	IFDEF:         "IFDEF",
+	IFNODEF:       "IFNODEF",
+	UNDEF:         "UNDEF",
 	ELSE:          "ELSE",
 	ELSEIF:        "ELSEIF",
 	ENDIF:         "ENDIF",
