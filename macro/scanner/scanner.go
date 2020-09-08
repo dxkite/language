@@ -517,6 +517,28 @@ func (s *Scanner) save() {
 	}
 }
 
+// 复制一份，除了代码
+func (s *Scanner) CloneWithoutSrc() *Scanner {
+	return &Scanner{
+		ch:          s.ch,
+		offset:      s.offset,
+		rdOffset:    s.rdOffset,
+		isLineStart: s.isLineStart,
+		line:        s.line,
+		column:      s.column,
+		Err:         s.Err,
+	}
+}
+
+// 获取源码
+func (s *Scanner) GetSrc() []byte {
+	return s.src
+}
+
+func (s *Scanner) SetSrc(src []byte) {
+	s.src = src
+}
+
 func (s *Scanner) reset() {
 	src := s.src
 	*s = *s.state

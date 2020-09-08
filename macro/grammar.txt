@@ -70,16 +70,7 @@ expression  =
     / bit_expression
     / testing_expression
     / "(" expression ")"
-    / macro_params_expression .
-
-macro_params_expression =
-    identifier ( "("  [ macro_argument_list ]  ")"  ) .
-
-macro_literal   =
-    identifier
-    / macro_params_expression
-    / ( "#" identifier )
-    / ( macro_connectable "##" macro_connectable ) .
+    / macro_call_expr .
 
 logical_expression  =
      ( "!" expression )
@@ -104,14 +95,6 @@ bit_expression  =
  (  "~" expression )
  /  ( expression ( "&" / "^" / "<<" /  ">>" ) expression  )  .
 
-macro_param =
-    identifier
-    / macro_params_expression
-    / "text not , " .
-
-macro_argument_list  =
-    macro_param  <  "," macro_param  >  .
-
 literal_expression =
     integer_literal
     / float_literal
@@ -125,13 +108,8 @@ code =
 text_line
     = "text util \n without \ "
 
-code_line =
-    text_line
-    / macro_literal .
-
 text_literal =
     < [ code ] > .
-
 
 define_literal  =
     identifier
@@ -158,7 +136,7 @@ error_statement =
 
 
 define_statement    =
-    ( macro_prefix "#define" define_literal code_line ) .
+    ( macro_prefix "#define" define_literal [macro_body] ) .
 
 
 line_statement  =
@@ -175,5 +153,29 @@ macro_statement =
     / line_statement
     / nop_statement .
 
-program =
-    < ( macro_statement / text_literal ) > .
+macro_body =
+    < text_line / macro_literal > .
+
+macro_literal =
+    ( macro_expr ["##" macro_expr ] ) .
+
+macro_expr =
+    identifier
+    / integer_literal
+    / float_literal
+    / ( "#" identifier )
+    / macro_call_expr .
+
+macro_call_expr =
+    identifier ( "("  [ macro_argument ]  ")"  ) .
+
+macro_argument =
+    macro_param_lit  <  "," macro_param_lit  >  .
+
+macro_param_lit =
+    < macro_item > .
+
+macro_item =
+    identifier
+    / macro_call_expr
+    / "text not , " .

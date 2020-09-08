@@ -16,7 +16,7 @@ type Expr interface {
 
 // 宏字面量
 type MacroLiter interface {
-	Node
+	Expr
 	litNode()
 }
 
@@ -24,6 +24,12 @@ type MacroLiter interface {
 type Stmt interface {
 	Node
 	stmtNode()
+}
+
+// 定义语句
+type DefineStmt interface {
+	Stmt
+	defineNode()
 }
 
 // 文件包含类型
@@ -49,8 +55,9 @@ type (
 	}
 	// 普通文本（宏中的代码块）
 	Text struct {
-		Offset token.Pos // 标识符位置
-		Text   string    // 文本内容
+		Offset token.Pos   // 标识符位置
+		Kind   token.Token // 类型
+		Text   string      // 文本内容
 	}
 	// 注释
 	Comment struct {
@@ -60,16 +67,23 @@ type (
 	}
 
 	// 语句块
-	BlockStmt struct {
-		Stmts []Stmt // 定义的语句
+	BlockStmt []Stmt
+
+	// 值定义
+	ValDefineStmt struct {
+		From, To token.Pos     // 标识符位置
+		Name     *Ident        // 定义的标识符
+		Body     MacroLitArray // 定义的语句
 	}
 
-	// 宏定义
-	DefineStmt struct {
-		From, To  token.Pos    // 标识符位置
-		Name      *Ident       // 定义的标识符
-		IdentList []*Ident     // 定义的参数
-		LitList   []MacroLiter // 定义的语句
+	// 函数定义
+	FuncDefineStmt struct {
+		From, To  token.Pos     // 标识符位置
+		Name      *Ident        // 定义的标识符
+		LParam    token.Pos     // (
+		IdentList []*Ident      // 定义的参数
+		RParam    token.Pos     // )
+		Body      MacroLitArray // 定义的语句
 	}
 
 	// 文件包含语句
@@ -81,9 +95,11 @@ type (
 
 	// 宏调用
 	MacroCallExpr struct {
-		From, To  token.Pos    // 标识符位置
-		Name      *Ident       // 定义的标识符
-		ParamList []MacroLiter // 调用的参数列表
+		From, To  token.Pos     // 标识符位置
+		Name      *Ident        // 定义的标识符
+		LParam    token.Pos     // (
+		ParamList MacroLitArray // 调用的参数列表
+		RParam    token.Pos     // )
 	}
 
 	// 字面量数组
@@ -135,7 +151,7 @@ type (
 	// 二元运算
 	BinaryExpr struct {
 		X      Expr        // 左值
-		Offset token.Pos   // 标识符位置
+		Offset token.Pos   // 操作符位置
 		Op     token.Token // 操作类型
 		Y      Expr        // 右值
 	}
@@ -180,31 +196,37 @@ func (t *Comment) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Text)
 func (*Comment) stmtNode()        {}
 
 func (t *BlockStmt) Pos() token.Pos {
-	if len(t.Stmts) > 0 {
-		return t.Stmts[0].Pos()
+	if len(*t) > 0 {
+		return (*t)[0].Pos()
 	}
 	return 0
 }
 func (t *BlockStmt) End() token.Pos {
-	l := len(t.Stmts)
+	l := len(*t)
 	if l > 0 {
-		return t.Stmts[l-1].End()
+		return (*t)[l-1].End()
 	}
 	return 0
 }
 
 func (t *BlockStmt) Add(stmt Stmt) {
-	t.Stmts = append(t.Stmts, stmt)
+	*t = append(*t, stmt)
 }
 
 func (*BlockStmt) stmtNode() {}
 
-func (t *DefineStmt) Pos() token.Pos { return t.From }
-func (t *DefineStmt) End() token.Pos { return t.To }
-func (*DefineStmt) stmtNode()        {}
+func (t *ValDefineStmt) Pos() token.Pos { return t.From }
+func (t *ValDefineStmt) End() token.Pos { return t.To }
+func (*ValDefineStmt) stmtNode()        {}
+func (*ValDefineStmt) defineNode()      {}
+
+func (t *FuncDefineStmt) Pos() token.Pos { return t.From }
+func (t *FuncDefineStmt) End() token.Pos { return t.To }
+func (*FuncDefineStmt) stmtNode()        {}
+func (*FuncDefineStmt) defineNode()      {}
 
 // 是否有参数
-func (t *DefineStmt) hasParam() bool { return len(t.IdentList) > 0 }
+func (t *FuncDefineStmt) hasParam() bool { return len(t.IdentList) > 0 }
 
 func (t *IncludeStmt) Pos() token.Pos { return t.From }
 func (t *IncludeStmt) End() token.Pos { return t.To }
@@ -218,6 +240,7 @@ func (*MacroCallExpr) litNode()         {}
 func (t *LitExpr) Pos() token.Pos { return t.Offset }
 func (t *LitExpr) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Value)) }
 func (*LitExpr) exprNode()        {}
+func (*LitExpr) litNode()         {}
 
 func (t *ErrorStmt) Pos() token.Pos { return t.Offset }
 func (t *ErrorStmt) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Msg)) }
@@ -258,4 +281,10 @@ func (t MacroLitArray) End() token.Pos {
 	}
 	return 0
 }
-func (MacroLitArray) litNode() {}
+
+func (t *MacroLitArray) AddLit(liter MacroLiter) {
+	*t = append(*t, liter)
+}
+
+func (MacroLitArray) exprNode() {}
+func (MacroLitArray) litNode()  {}
