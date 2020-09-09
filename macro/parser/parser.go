@@ -41,7 +41,7 @@ func (p *parser) parse() {
 
 func (p *parser) parseTextLine() ast.Stmt {
 	node := ast.MacroLitArray{}
-	for !TokenNotIn(p.tok, token.EOF, token.MACRO) {
+	for TokenNotIn(p.tok, token.EOF, token.MACRO) {
 		// 解析
 		if TokenIn(p.tok, token.IDENT, token.FLOAT, token.INT, token.SHARP) {
 			node.AddLit(p.parseMacroLiter())

@@ -1,10 +1,12 @@
 package parser
 
 import (
+	"bytes"
 	"dxkite.cn/language/macro/ast"
 	"dxkite.cn/language/macro/token"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -925,6 +927,40 @@ func Test_parser_parseExpr(t *testing.T) {
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
 				t.Errorf("parseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
+			}
+		})
+	}
+}
+
+func encode(x interface{}) (string, error) {
+	b := &bytes.Buffer{}
+	e := json.NewEncoder(b)
+	e.SetEscapeHTML(false)
+	if err := e.Encode(x); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(b.String()), nil
+}
+
+func TestParseLine(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			"parse include",
+			"#include <stdio.h>\n#include \"log.h\"\nint main() { \nprintf(\"hello world\");\n}\n",
+			`[{"From":0,"To":17,"Path":"<stdio.h>","Type":0},{"From":19,"To":28,"Path":"\"log.h\"","Type":1},[{"Offset":36,"Name":"int"},{"Offset":39,"Kind":"TEXT","Text":" "},{"From":40,"To":46,"Name":{"Offset":40,"Name":"main"},"LParam":44,"ParamList":null,"RParam":45},{"Offset":46,"Kind":"TEXT","Text":" { \n"},{"From":50,"To":71,"Name":{"Offset":50,"Name":"printf"},"LParam":56,"ParamList":[{"Offset":57,"Kind":"STRING","Value":"\"hello world\""}],"RParam":70},{"Offset":71,"Kind":"TEXT","Text":";\n}\n"}]]`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := Parse([]byte(tt.src))
+			got, _ := encode(o)
+			//fmt.Print(len(got), len(tt.want));
+			if got != tt.want {
+				t.Errorf("Parse() = \ngot \t%s\nwant\t%s", got, tt.want)
 			}
 		})
 	}

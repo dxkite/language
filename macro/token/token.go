@@ -160,6 +160,10 @@ func (tok Token) String() string {
 	return s
 }
 
+func (tok Token) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.QuoteToGraphic(TokenName(tok).String())), nil
+}
+
 // 是否是操作符
 func (tok Token) IsOperator() bool { return operator_beg < tok && tok < operator_end }
 
