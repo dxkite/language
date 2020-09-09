@@ -34,7 +34,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"parse error",
-			[]byte("# error compile error\n#error error 1234 is \\ \ndefined"),
+			[]byte("# error compile error\n#error error 1234 is \\\ndefined"),
 			&ast.BlockStmt{
 				&ast.ErrorStmt{
 					Offset: 0,
@@ -42,7 +42,7 @@ func TestParse(t *testing.T) {
 				},
 				&ast.ErrorStmt{
 					Offset: 22,
-					Msg:    "#error error 1234 is \\ \ndefined",
+					Msg:    "#error error 1234 is defined",
 				},
 			},
 		},
@@ -65,7 +65,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"parse line",
-			[]byte("#line 99\n#line 98 \"test.c\""),
+			[]byte("#line 99\n#line 98 \"test.c\"\n# 99\n# 1 \"<built-in>\""),
 			&ast.BlockStmt{
 				&ast.LineStmt{
 					From: 0, To: 8,
@@ -74,6 +74,14 @@ func TestParse(t *testing.T) {
 				&ast.LineStmt{
 					From: 9, To: 26,
 					Line: "98", Path: "\"test.c\"",
+				},
+				&ast.LineStmt{
+					From: 27, To: 31,
+					Line: "99",
+				},
+				&ast.LineStmt{
+					From: 32, To: 48,
+					Line: "1", Path: "\"<built-in>\"",
 				},
 			},
 		},
@@ -86,7 +94,7 @@ func TestParse(t *testing.T) {
 					Line: "98", Path: "\"test.c\"",
 				},
 				&ast.NopStmt{
-					Offset: 18,
+					Offset: 20,
 					Text:   "# a b c d e",
 				},
 				&ast.ErrorStmt{
@@ -682,7 +690,241 @@ func TestParse(t *testing.T) {
 			if got := Parse(tt.src); !reflect.DeepEqual(got, tt.want) {
 				gotS, _ := json.Marshal(got)
 				wantS, _ := json.Marshal(tt.want)
-				t.Errorf("Parse() = \ntarg %s\nwant %s", gotS, wantS)
+				t.Errorf("Parse() = \ngot\t%s\nwant\t%s", gotS, wantS)
+			}
+		})
+	}
+}
+
+func Test_clearBackslash(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want string
+	}{
+		{
+			"end lf",
+			"aabbcc\\\n",
+			"aabbcc",
+		},
+		{
+			"mul lf",
+			"aab\\\nbcc\\\n",
+			"aabbcc",
+		},
+		{
+			"single backslash",
+			"aab\\\nbcc\\",
+			"aabbcc\\",
+		},
+		{
+			"single backslash end",
+			"aab\\bcc\\\nee\\",
+			"aab\\bccee\\",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := clearBackslash(tt.text); got != tt.want {
+				t.Errorf("clearBackslash() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parser_parseLiteralExpr(t *testing.T) {
+	tests := []struct {
+		name     string
+		code     string
+		wantExpr ast.Expr
+	}{
+		{
+			"number",
+			"1",
+			&ast.LitExpr{
+				Offset: 0,
+				Kind:   token.INT,
+				Value:  "1",
+			},
+		},
+		{
+			"number space",
+			"  1",
+			&ast.LitExpr{
+				Offset: 2,
+				Kind:   token.INT,
+				Value:  "1",
+			},
+		},
+		{
+			"float",
+			"  1.1e10",
+			&ast.LitExpr{
+				Offset: 2,
+				Kind:   token.FLOAT,
+				Value:  "1.1e10",
+			},
+		},
+		{
+			"string",
+			`  "1.1e10"`,
+			&ast.LitExpr{
+				Offset: 2,
+				Kind:   token.STRING,
+				Value:  `"1.1e10"`,
+			},
+		},
+		{
+			"char",
+			"  'a'",
+			&ast.LitExpr{
+				Offset: 2,
+				Kind:   token.CHAR,
+				Value:  "'a'",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &parser{}
+			p.init([]byte(tt.code))
+			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+				gotS, _ := json.Marshal(gotExpr)
+				wantS, _ := json.Marshal(tt.wantExpr)
+				t.Errorf("parseExpr() = %v, want %v", string(gotS), string(wantS))
+			}
+		})
+	}
+}
+
+func Test_parser_parseUnaryExpr(t *testing.T) {
+	tests := []struct {
+		name     string
+		code     string
+		wantExpr ast.Expr
+	}{
+		{
+			"not a",
+			"!a",
+			&ast.UnaryExpr{
+				Offset: 0,
+				Op:     token.LNOT,
+				X: &ast.Ident{
+					Offset: 1,
+					Name:   "a",
+				},
+			},
+		},
+		{
+			"not10",
+			"!10",
+			&ast.UnaryExpr{
+				Offset: 0,
+				Op:     token.LNOT,
+				X: &ast.LitExpr{
+					Offset: 1,
+					Kind:   token.INT,
+					Value:  "10",
+				},
+			},
+		},
+		{
+			"not defined A",
+			"!defined A",
+			&ast.UnaryExpr{
+				Offset: 0,
+				Op:     token.LNOT,
+				X: &ast.UnaryExpr{
+					Offset: 1,
+					Op:     token.DEFINED,
+					X: &ast.Ident{
+						Offset: 9,
+						Name:   "A",
+					},
+				},
+			},
+		},
+		{
+			"not define",
+			"!define",
+			&ast.UnaryExpr{
+				Offset: 0,
+				Op:     token.LNOT,
+				X: &ast.Ident{
+					Offset: 1,
+					Name:   "define",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &parser{}
+			p.init([]byte(tt.code))
+			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+				gotS, _ := json.Marshal(gotExpr)
+				wantS, _ := json.Marshal(tt.wantExpr)
+				t.Errorf("parseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
+			}
+		})
+	}
+}
+
+func Test_parser_parseExpr(t *testing.T) {
+	tests := []struct {
+		name     string
+		code     string
+		wantExpr ast.Expr
+	}{
+		{
+			"a*a/a%a+b",
+			"a*a/a%a+b",
+			&ast.BinaryExpr{
+				X: &ast.BinaryExpr{
+					X: &ast.BinaryExpr{
+						X: &ast.BinaryExpr{
+							X: &ast.Ident{
+								Offset: 0,
+								Name:   "a",
+							},
+							Offset: 1,
+							Op:     token.MUL,
+							Y: &ast.Ident{
+								Offset: 2,
+								Name:   "a",
+							},
+						},
+						Offset: 3,
+						Op:     token.QUO,
+						Y: &ast.Ident{
+							Offset: 4,
+							Name:   "a",
+						},
+					},
+					Offset: 5,
+					Op:     token.REM,
+					Y: &ast.Ident{
+						Offset: 6,
+						Name:   "a",
+					},
+				},
+				Offset: 7,
+				Op:     13,
+				Y: &ast.Ident{
+					Offset: 8,
+					Name:   "b",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &parser{}
+			p.init([]byte(tt.code))
+			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+				gotS, _ := json.Marshal(gotExpr)
+				wantS, _ := json.Marshal(tt.wantExpr)
+				t.Errorf("parseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
 			}
 		})
 	}

@@ -134,7 +134,7 @@ func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
 			tok = token.SUB
 			lit = string(ch)
 		case '*':
-			tok = token.SUB
+			tok = token.MUL
 			lit = string(ch)
 		case '%':
 			tok = token.REM
@@ -207,6 +207,9 @@ func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
 				tok = token.LNOT
 				lit = string(ch)
 			}
+		case '\\':
+			tok = token.BACKSLASH
+			lit = string(ch)
 		case '\n':
 			tok = token.LF
 			lit = string(ch)
@@ -440,7 +443,7 @@ func (s *Scanner) scanNumberBase(base int) {
 }
 
 func (s *Scanner) isEndOfText() bool {
-	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("/'\"(),+-*%&|=^~<>!\n#", string(s.ch)) {
+	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("\\/'\"(),+-*%&|=^~<>!\n#", string(s.ch)) {
 		return true
 	}
 	return false

@@ -60,11 +60,12 @@ const (
 	QUOTE        // ’
 	DOUBLE_QUOTE // "
 
-	LPAREN // (
-	COMMA  // ,
-	RPAREN // )
-	LF     // \n
-	EQU    // =
+	LPAREN    // (
+	COMMA     // ,
+	RPAREN    // )
+	LF        // \n
+	BACKSLASH // \
+	EQU       // =
 
 	operator_end
 
@@ -81,7 +82,6 @@ const (
 	ERROR
 	DEFINED
 	DEFINE
-	NOP
 	keyword_end
 )
 
@@ -129,6 +129,7 @@ var tokens = [...]string{
 	DOUBLE_SHARP: "##",
 	QUOTE:        "'",
 	DOUBLE_QUOTE: "\"",
+	BACKSLASH:    "\\",
 	LF:           "\\n",
 	LPAREN:       "(",
 	COMMA:        ",",
@@ -144,7 +145,6 @@ var tokens = [...]string{
 	UNDEF:   "#undef",
 	LINE:    "#line",
 	ERROR:   "#error",
-	NOP:     "#",
 	DEFINED: "defined",
 	DEFINE:  "#define",
 }
@@ -202,6 +202,7 @@ var tokenName = [...]string{
 	DOUBLE_SHARP:  "DOUBLE_SHARP",
 	QUOTE:         "QUOTE",
 	DOUBLE_QUOTE:  "DOUBLE_QUOTE",
+	BACKSLASH:     "BACKSLASH",
 	LF:            "LF",
 	EQU:           "EQU",
 	LPAREN:        "LPAREN",
@@ -217,7 +218,6 @@ var tokenName = [...]string{
 	ENDIF:         "ENDIF",
 	LINE:          "LINE",
 	ERROR:         "ERROR",
-	NOP:           "NOP",
 	DEFINED:       "DEFINED",
 	DEFINE:        "DEFINE",
 }
@@ -259,4 +259,36 @@ func IsIdentifier(name string) bool {
 		}
 	}
 	return name != "" && !IsKeyword(name)
+}
+
+const (
+	LowestPrec = 0  // 最低优先级
+	UnaryPrec  = 11 // 最高优先级
+)
+
+// 优先级
+func (op Token) Precedence() int {
+	switch op {
+	case OR:
+		return 1
+	case AND:
+		return 2
+	case LOR:
+		return 2
+	case XOR:
+		return 4
+	case LAND:
+		return 5
+	case EQL, NEQ:
+		return 6
+	case LSS, LEQ, GTR, GEQ:
+		return 7
+	case SHL, SHR:
+		return 8
+	case ADD, SUB:
+		return 9
+	case MUL, QUO, REM:
+		return 10
+	}
+	return LowestPrec
 }

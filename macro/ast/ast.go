@@ -168,6 +168,7 @@ func (t *BadExpr) Pos() token.Pos { return t.Offset }
 func (t *BadExpr) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Lit)) }
 func (*BadExpr) exprNode()        {}
 func (*BadExpr) stmtNode()        {}
+func (*BadExpr) litNode()         {}
 
 func (t *Ident) Pos() token.Pos { return t.Offset }
 func (t *Ident) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Name)) }
@@ -298,3 +299,4 @@ func (t *MacroLitArray) AddLit(liter MacroLiter) {
 
 func (MacroLitArray) exprNode() {}
 func (MacroLitArray) litNode()  {}
+func (MacroLitArray) stmtNode() {}
