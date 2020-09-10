@@ -28,26 +28,65 @@ func (it interpreter) evalExpr(expr ast.Expr) interface{} {
 	return false
 }
 
+// 二元运算
+func (it interpreter) evalBinaryExpr(expr *ast.BinaryExpr) interface{} {
+	x := it.evalExpr(expr.X)
+	y := it.evalExpr(expr.Y)
+	return evalBinary(x, y, expr.Op)
+}
+
 // 一元运算
 func (it interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 	switch expr.Op {
-	case token.LNOT:
-		//return !it.evalExpr(expr.X)
-	case token.DEFINED:
+	case token.LNOT: // !number
+		v := it.evalExpr(expr.X)
+		switch n := v.(type) {
+		case int64:
+			return !(n > 0)
+		case float64:
+			return !(n > 0)
+		default:
+			it.errorf(expr.X.Pos(), "unexpected token %v in LNOT expr", expr.X)
+		}
+	case token.NOT: // ~number
+		v := it.evalExpr(expr.X)
+		switch n := v.(type) {
+		case int64:
+			return ^n
+		case float64:
+			return ^int64(n)
+		default:
+			it.errorf(expr.X.Pos(), "unexpected token %v in LNOT expr", expr.X)
+		}
+	case token.SUB: // - number
+		v := it.evalExpr(expr.X)
+		switch n := v.(type) {
+		case int64:
+			return -n
+		case float64:
+			return -n
+		default:
+			it.errorf(expr.X.Pos(), "unexpected token %v in LNOT expr", expr.X)
+		}
+	case token.DEFINED: // defined ident
 		id, _ := expr.X.(*ast.Ident)
 		if _, ok := it.Val[id.Name]; ok {
-			return true
+			return int64(1)
 		}
 		if _, ok := it.Func[id.Name]; ok {
-			return true
+			return int64(1)
 		}
-		return false
-	case token.NOT:
-
-	case token.SUB:
-
+		return int64(0)
+	case token.MACRO: // #ident
+		id, _ := expr.X.(*ast.Ident)
+		return strconv.QuoteToGraphic(it.evalIdent(id))
 	}
-	return false
+	return ""
+}
+
+// 解析ID标识符
+func (it interpreter) evalIdent(*ast.Ident) string {
+	return ""
 }
 
 // 解析字面量表达式去运算
