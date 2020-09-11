@@ -972,7 +972,7 @@ func TestParseData(t *testing.T) {
 		ext := filepath.Ext(p)
 		name := filepath.Base(p)
 		if ext == ".c" {
-			t.Run(name, func(t *testing.T) {
+			t.Run(p, func(t *testing.T) {
 				testFile(name, p, t)
 			})
 		}

@@ -321,7 +321,7 @@ func (p *Parser) parseIdentList() (params []*ast.Ident, err error) {
 	params = []*ast.Ident{}
 	p.skipWhitespace()
 	for TokenNotIn(p.tok, token.RPAREN, token.NEWLINE, token.EOF) {
-		if p.tok != token.IDENT {
+		if !isIdent(p.tok) {
 			goto errExit
 		} else {
 			params = append(params, &ast.Ident{
@@ -707,12 +707,17 @@ func (p *Parser) next() (pos token.Pos, tok token.Token, lit string) {
 // 获取下一个标识符
 func (p *Parser) expectedIdent() (pos token.Pos, tok token.Token, lit string) {
 	pos, tok, lit = p.pos, p.tok, p.lit
-	if TokenIn(tok, token.IDENT) || tok.IsKeyword() {
+	if isIdent(tok) {
 		p.next()
 		return
 	}
 	p.errorf(pos, "expected ident token, got %v", tok)
 	return
+}
+
+// 是否为标识符
+func isIdent(tok token.Token) bool {
+	return tok == token.IDENT || tok.IsKeyword()
 }
 
 func (p *Parser) expected(typ ...token.Token) (pos token.Pos, tok token.Token, lit string) {

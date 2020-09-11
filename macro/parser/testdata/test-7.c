@@ -5,3 +5,7 @@
   ) {
 
 }
+#if A
+#define abc(endif) \
+#endif
+#endif

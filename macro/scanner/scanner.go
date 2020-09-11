@@ -422,7 +422,7 @@ func (s *Scanner) scanComment() (tok token.Token, lit string) {
 	tok = token.COMMENT
 	if s.ch == '/' {
 		s.next()
-		for s.ch != '\n' && s.ch >= 0 {
+		for s.ch != '\r' && s.ch != '\n' && s.ch >= 0 {
 			s.next()
 		}
 		goto exit

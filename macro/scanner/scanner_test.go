@@ -50,7 +50,7 @@ int ch = 123;
 B(awd)
 123B
 "a\0a" "\xaabbcc" "\xFFbbcc\t\""
-#undef A` + "#define a \r\r\r\r\n#define b\\\r\r\r\r\n")
+#undef A` + "#define a \r\r\r\r\n#define b\\\r\r\r\r\n" + "#abc //aaa\r\r\r\r\n")
 
 func TestScanner_Scan(t *testing.T) {
 	s := &Scanner{}
@@ -100,7 +100,8 @@ func TestScanner_Scan(t *testing.T) {
 		{758, token.INT, "123B"}, {762, token.NEWLINE, "\n"},
 		{763, token.STRING, "\"a\\0a\""}, {769, token.TEXT, " "}, {770, token.STRING, "\"\\xaabbcc\""}, {780, token.TEXT, " "}, {781, token.STRING, "\"\\xFFbbcc\\t\\\"\""}, {795, token.NEWLINE, "\n"},
 		{796, token.MACRO, "#"}, {797, token.UNDEF, "undef"}, {802, token.TEXT, " "}, {803, token.IDENT, "A"}, {804, token.SHARP, "#"}, {805, token.DEFINE, "define"}, {811, token.TEXT, " "}, {812, token.IDENT, "a"}, {813, token.TEXT, " "}, {814, token.NEWLINE, "\r\r\r\r\n"},
-		{819, token.MACRO, "#"}, {820, token.DEFINE, "define"}, {826, token.TEXT, " "}, {827, token.IDENT, "b"}, {828, token.BACKSLASH_NEWLINE, "\\\r\r\r\r\n"}, {834, token.EOF, ""},
+		{819, token.MACRO, "#"}, {820, token.DEFINE, "define"}, {826, token.TEXT, " "}, {827, token.IDENT, "b"}, {828, token.BACKSLASH_NEWLINE, "\\\r\r\r\r\n"}, {834, token.MACRO, "#"}, {835, token.IDENT, "abc"}, {838, token.TEXT, " "}, {839, token.COMMENT, "//aaa"}, {844, token.NEWLINE, "\r\r\r\r\n"},
+		{849, token.EOF, ""},
 	}
 
 	errors := ErrorList{
