@@ -957,6 +957,7 @@ func testFile(name, src string, t *testing.T) {
 	}
 	stmts, errors := Parse(code)
 	for _, err := range errors {
+		// 194571
 		fmt.Println(name, err)
 	}
 	if len(errors) > 0 {

@@ -463,7 +463,7 @@ func (p *Parser) parseMacroLitExpr(inMacro bool) (node ast.MacroLiter) {
 		Name:   p.lit,
 	}
 	p.next()
-	if _, ok := p.tryNextNotEmpty(token.LPAREN); ok {
+	if p.tryParenPair(inMacro) {
 		p.skipWhitespace()
 		lp, _, _ := p.expected(token.LPAREN)
 		list := p.parseMacroArgument(inMacro)
@@ -478,6 +478,30 @@ func (p *Parser) parseMacroLitExpr(inMacro bool) (node ast.MacroLiter) {
 		}
 	}
 	return id
+}
+
+// 查找完整的()
+func (p *Parser) tryParenPair(inMacro bool) bool {
+	pp := p.clone()
+	defer p.reset(pp)
+	p.skipWhitespace()
+	if p.tok == token.LPAREN {
+		dp := 1
+		p.next()
+		for !isMacroArgEnd(inMacro, p.tok) {
+			if p.tok == token.LPAREN {
+				dp++
+			}
+			if p.tok == token.RPAREN {
+				dp--
+				if dp <= 0 {
+					return true
+				}
+			}
+			p.next()
+		}
+	}
+	return false
 }
 
 // 找到调用参数
@@ -527,7 +551,7 @@ func isMacroArgEnd(inMacro bool, tok token.Token) bool {
 	if inMacro {
 		return isMacroEnd(tok)
 	}
-	return TokenIn(tok, token.EOF, token.COMMENT)
+	return TokenIn(tok, token.EOF, token.COMMENT, token.MACRO)
 }
 
 // 解析字面量
