@@ -5,8 +5,11 @@ import (
 	"dxkite.cn/language/macro/ast"
 	"dxkite.cn/language/macro/token"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -38,13 +41,15 @@ func TestParse(t *testing.T) {
 			"parse error",
 			[]byte("# error compile error\n#error error 1234 is \\\ndefined"),
 			&ast.BlockStmt{
-				&ast.ErrorStmt{
+				&ast.MacroCmdStmt{
 					Offset: 0,
-					Msg:    "# error compile error",
+					Kind:   token.ERROR,
+					Cmd:    "# error compile error",
 				},
-				&ast.ErrorStmt{
+				&ast.MacroCmdStmt{
 					Offset: 22,
-					Msg:    "#error error 1234 is defined",
+					Kind:   token.ERROR,
+					Cmd:    "#error error 1234 is defined",
 				},
 			},
 		},
@@ -52,9 +57,10 @@ func TestParse(t *testing.T) {
 			"parse undef",
 			[]byte("# error compile error\n#undef A"),
 			&ast.BlockStmt{
-				&ast.ErrorStmt{
+				&ast.MacroCmdStmt{
 					Offset: 0,
-					Msg:    "# error compile error",
+					Kind:   token.ERROR,
+					Cmd:    "# error compile error",
 				},
 				&ast.ValUnDefineStmt{
 					From: 22, To: 30,
@@ -95,13 +101,14 @@ func TestParse(t *testing.T) {
 					From: 0, To: 17,
 					Line: "98", Path: "\"test.c\"",
 				},
-				&ast.NopStmt{
+				&ast.InvalidStmt{
 					Offset: 20,
 					Text:   "# a b c d e",
 				},
-				&ast.ErrorStmt{
+				&ast.MacroCmdStmt{
 					Offset: 30,
-					Msg:    "#error no op find",
+					Kind:   token.ERROR,
+					Cmd:    "#error no op find",
 				},
 			},
 		},
@@ -126,13 +133,14 @@ func TestParse(t *testing.T) {
 							Kind:   token.QUOTE,
 							Text:   "'",
 						},
-						&ast.UnaryExpr{
+						&ast.Text{
 							Offset: 14,
-							Op:     token.SHARP,
-							X: &ast.Ident{
-								Offset: 15,
-								Name:   "bb",
-							},
+							Kind:   token.SHARP,
+							Text:   "#",
+						},
+						&ast.Ident{
+							Offset: 15,
+							Name:   "bb",
 						},
 					},
 				},
@@ -206,13 +214,14 @@ func TestParse(t *testing.T) {
 							Kind:   token.QUOTE,
 							Text:   "'",
 						},
-						&ast.UnaryExpr{
+						&ast.Text{
 							Offset: 14,
-							Op:     token.SHARP,
-							X: &ast.Ident{
-								Offset: 15,
-								Name:   "bb",
-							},
+							Kind:   token.SHARP,
+							Text:   "#",
+						},
+						&ast.Ident{
+							Offset: 15,
+							Name:   "bb",
 						},
 					},
 				},
@@ -475,14 +484,14 @@ func TestParse(t *testing.T) {
 								Offset: 26,
 								Name:   "C",
 							},
-							LParam: 27,
+							LParen: 27,
 							ParamList: ast.MacroLitArray{
 								&ast.Ident{
 									Offset: 28,
 									Name:   "x",
 								},
 							},
-							RParam: 29,
+							RParen: 29,
 						},
 						&ast.BinaryExpr{
 							X: &ast.Ident{
@@ -535,7 +544,7 @@ func TestParse(t *testing.T) {
 								Offset: 26,
 								Name:   "C",
 							},
-							LParam: 27,
+							LParen: 27,
 							ParamList: ast.MacroLitArray{
 								ast.MacroLitArray{
 									&ast.Ident{
@@ -547,14 +556,14 @@ func TestParse(t *testing.T) {
 										Kind:   token.TEXT,
 										Text:   " ",
 									},
-									&ast.LitExpr{
+									&ast.Text{
 										Offset: 31,
 										Kind:   token.INT,
-										Value:  "123",
+										Text:   "123",
 									},
 								},
 							},
-							RParam: 34,
+							RParen: 34,
 						},
 						&ast.BinaryExpr{
 							X: &ast.Ident{
@@ -606,7 +615,7 @@ func TestParse(t *testing.T) {
 								Offset: 26,
 								Name:   "C",
 							},
-							LParam: 27,
+							LParen: 27,
 							ParamList: ast.MacroLitArray{
 								ast.MacroLitArray{
 									&ast.MacroCallExpr{
@@ -615,24 +624,24 @@ func TestParse(t *testing.T) {
 											Offset: 28,
 											Name:   "D",
 										},
-										LParam: 29,
+										LParen: 29,
 										ParamList: ast.MacroLitArray{
 											&ast.Ident{
 												Offset: 30,
 												Name:   "x",
 											},
 										},
-										RParam: 31,
+										RParen: 31,
 									},
 									&ast.Text{
 										Offset: 32,
 										Kind:   token.TEXT,
 										Text:   " ",
 									},
-									&ast.LitExpr{
+									&ast.Text{
 										Offset: 33,
 										Kind:   token.INT,
-										Value:  "123",
+										Text:   "123",
 									},
 								},
 								ast.MacroLitArray{
@@ -642,8 +651,8 @@ func TestParse(t *testing.T) {
 											Offset: 37,
 											Name:   "E",
 										},
-										LParam: 38,
-										RParam: 39,
+										LParen: 38,
+										RParen: 39,
 									},
 									&ast.MacroCallExpr{
 										From: 40, To: 44,
@@ -651,18 +660,18 @@ func TestParse(t *testing.T) {
 											Offset: 40,
 											Name:   "F",
 										},
-										LParam: 41,
+										LParen: 41,
 										ParamList: ast.MacroLitArray{
 											&ast.Ident{
 												Offset: 42,
 												Name:   "g",
 											},
 										},
-										RParam: 43,
+										RParen: 43,
 									},
 								},
 							},
-							RParam: 44,
+							RParen: 44,
 						},
 						&ast.Text{
 							Offset: 45,
@@ -689,10 +698,10 @@ func TestParse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Parse(tt.src); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := Parse(tt.src); !reflect.DeepEqual(got, tt.want) {
 				gotS, _ := json.Marshal(got)
 				wantS, _ := json.Marshal(tt.want)
-				t.Errorf("Parse() = \ngot\t%s\nwant\t%s", gotS, wantS)
+				t.Errorf("Parse() = \ngot \t%s\nwant\t%s", gotS, wantS)
 			}
 		})
 	}
@@ -788,8 +797,8 @@ func Test_parser_parseLiteralExpr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &parser{}
-			p.init([]byte(tt.code))
+			p := &Parser{}
+			p.Init([]byte(tt.code))
 			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
@@ -861,8 +870,8 @@ func Test_parser_parseUnaryExpr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &parser{}
-			p.init([]byte(tt.code))
+			p := &Parser{}
+			p.Init([]byte(tt.code))
 			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
@@ -921,8 +930,8 @@ func Test_parser_parseExpr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &parser{}
-			p.init([]byte(tt.code))
+			p := &Parser{}
+			p.Init([]byte(tt.code))
 			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
@@ -932,36 +941,42 @@ func Test_parser_parseExpr(t *testing.T) {
 	}
 }
 
-func encode(x interface{}) (string, error) {
+func encode(x interface{}) ([]byte, error) {
 	b := &bytes.Buffer{}
 	e := json.NewEncoder(b)
-	e.SetEscapeHTML(false)
 	if err := e.Encode(x); err != nil {
-		return "", err
+		return nil, err
 	}
-	return strings.TrimSpace(b.String()), nil
+	return b.Bytes(), nil
 }
 
-func TestParseLine(t *testing.T) {
-	tests := []struct {
-		name string
-		src  string
-		want string
-	}{
-		{
-			"parse include",
-			"#include <stdio.h>\n#include \"log.h\"\nint main() { \nprintf(\"hello world\");\n}\n",
-			`[{"From":0,"To":17,"Path":"<stdio.h>","Type":0},{"From":19,"To":28,"Path":"\"log.h\"","Type":1},[{"Offset":36,"Name":"int"},{"Offset":39,"Kind":"TEXT","Text":" "},{"From":40,"To":46,"Name":{"Offset":40,"Name":"main"},"LParam":44,"ParamList":null,"RParam":45},{"Offset":46,"Kind":"TEXT","Text":" { \n"},{"From":50,"To":71,"Name":{"Offset":50,"Name":"printf"},"LParam":56,"ParamList":[{"Offset":57,"Kind":"STRING","Value":"\"hello world\""}],"RParam":70},{"Offset":71,"Kind":"TEXT","Text":";\n}\n"}]]`,
-		},
+func testFile(name, src string, t *testing.T) {
+	code, err := ioutil.ReadFile(src)
+	if err != nil {
+		t.Error(err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			o := Parse([]byte(tt.src))
-			got, _ := encode(o)
-			//fmt.Print(len(got), len(tt.want));
-			if got != tt.want {
-				t.Errorf("Parse() = \ngot \t%s\nwant\t%s", got, tt.want)
-			}
-		})
+	stmts, errors := Parse(code)
+	for _, err := range errors {
+		fmt.Println(name, err)
+	}
+	if len(errors) > 0 {
+		a, _ := encode(stmts)
+		fmt.Println(string(a))
+		t.Error(errors)
+	}
+}
+
+func TestParseData(t *testing.T) {
+	if err := filepath.Walk("testdata/", func(p string, info os.FileInfo, err error) error {
+		ext := filepath.Ext(p)
+		name := filepath.Base(p)
+		if ext == ".c" {
+			t.Run(name, func(t *testing.T) {
+				testFile(name, p, t)
+			})
+		}
+		return nil
+	}); err != nil {
+		t.Error(err)
 	}
 }

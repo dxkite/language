@@ -1,13 +1,14 @@
 package scanner
 
 import (
+	"dxkite.cn/language/macro/token"
 	"fmt"
 	"sort"
 )
 
 // 扫描错误
 type Error struct {
-	Pos Position
+	Pos token.Position
 	Msg string
 }
 
@@ -23,8 +24,13 @@ func (e Error) Error() string {
 type ErrorList []*Error
 
 // 添加一个错误
-func (p *ErrorList) Add(pos Position, msg string) {
+func (p *ErrorList) Add(pos token.Position, msg string) {
 	*p = append(*p, &Error{pos, msg})
+}
+
+// 合并错误
+func (p *ErrorList) Merge(err ErrorList) {
+	*p = append(*p, err...)
 }
 
 // 清空错误

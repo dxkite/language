@@ -1,6 +1,8 @@
 package ast
 
-import "dxkite.cn/language/macro/token"
+import (
+	"dxkite.cn/language/macro/token"
+)
 
 // 节点
 type Node interface {
@@ -30,6 +32,14 @@ type Stmt interface {
 type DefineStmt interface {
 	Stmt
 	defineNode()
+}
+
+// 条件语句
+type CondStmt interface {
+	Stmt
+	SetFromTO(from, to token.Pos)
+	SetTrueStmt(t Stmt)
+	SetFalseStmt(f Stmt)
 }
 
 // 文件包含类型
@@ -103,9 +113,16 @@ type (
 	MacroCallExpr struct {
 		From, To  token.Pos     // 标识符位置
 		Name      *Ident        // 定义的标识符
-		LParam    token.Pos     // (
+		LParen    token.Pos     // (
 		ParamList MacroLitArray // 调用的参数列表
-		RParam    token.Pos     // )
+		RParen    token.Pos     // )
+	}
+
+	// 括号表达式
+	ParenExpr struct {
+		Lparen token.Pos // "("
+		X      Expr      // 表达式值
+		Rparen token.Pos //  ")"
 	}
 
 	// 字面量数组
@@ -121,9 +138,10 @@ type (
 	}
 
 	// 报错表达式
-	ErrorStmt struct {
-		Offset token.Pos // 标识符位置
-		Msg    string    // 报错文本内容
+	MacroCmdStmt struct {
+		Offset token.Pos   // 标识符位置
+		Kind   token.Token // 类型
+		Cmd    string      // 报错文本内容
 	}
 
 	// 行语句
@@ -133,8 +151,8 @@ type (
 		Path     string    // 文件名
 	}
 
-	// 无操作宏
-	NopStmt struct {
+	// 非法宏
+	InvalidStmt struct {
 		Offset token.Pos // 标识符位置
 		Text   string    // 报错文本内容
 	}
@@ -143,8 +161,31 @@ type (
 	IfStmt struct {
 		From, To token.Pos // 标识符位置
 		X        Expr      // 条件
-		Then     []Stmt    // 正确
-		Else     []Stmt    // 错误
+		Then     Stmt      // 正确
+		Else     Stmt      // 错误
+	}
+
+	ElseIfStmt struct {
+		From, To token.Pos // 标识符位置
+		X        Expr      // 条件
+		Then     Stmt      // 正确
+		Else     Stmt      // 错误
+	}
+
+	// ifdef语句
+	IfDefStmt struct {
+		From, To token.Pos // 标识符位置
+		Name     *Ident    // 定义的标识符
+		Then     Stmt      // 正确
+		Else     Stmt      // 错误
+	}
+
+	// ifndef语句
+	IfNdefStmt struct {
+		From, To token.Pos // 标识符位置
+		Name     *Ident    // 定义的标识符
+		Then     Stmt      // 正确
+		Else     Stmt      // 错误
 	}
 
 	// 一元运算
@@ -248,27 +289,79 @@ func (t *MacroCallExpr) End() token.Pos { return t.To }
 func (*MacroCallExpr) exprNode()        {}
 func (*MacroCallExpr) litNode()         {}
 
+func (t *ParenExpr) Pos() token.Pos { return t.Lparen }
+func (t *ParenExpr) End() token.Pos { return t.Rparen }
+func (*ParenExpr) exprNode()        {}
+
 func (t *LitExpr) Pos() token.Pos { return t.Offset }
 func (t *LitExpr) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Value)) }
 func (*LitExpr) exprNode()        {}
 func (*LitExpr) litNode()         {}
 
-func (t *ErrorStmt) Pos() token.Pos { return t.Offset }
-func (t *ErrorStmt) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Msg)) }
-func (*ErrorStmt) stmtNode()        {}
+func (t *MacroCmdStmt) Pos() token.Pos { return t.Offset }
+func (t *MacroCmdStmt) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Cmd)) }
+func (*MacroCmdStmt) stmtNode()        {}
 
 func (t *LineStmt) Pos() token.Pos { return t.From }
 func (t *LineStmt) End() token.Pos { return t.To }
 func (*LineStmt) stmtNode()        {}
 
-func (t *NopStmt) Pos() token.Pos { return t.Offset }
-func (t *NopStmt) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Text)) }
-func (*NopStmt) stmtNode()        {}
+func (t *InvalidStmt) Pos() token.Pos { return t.Offset }
+func (t *InvalidStmt) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Text)) }
+func (*InvalidStmt) stmtNode()        {}
 
-func (t *IfStmt) Pos() token.Pos { return t.From }
-func (t *IfStmt) End() token.Pos { return t.To }
-func (*IfStmt) stmtNode()        {}
-
+func (stmt *IfStmt) Pos() token.Pos { return stmt.From }
+func (stmt *IfStmt) End() token.Pos { return stmt.To }
+func (*IfStmt) stmtNode()           {}
+func (stmt *IfStmt) SetFromTO(from, to token.Pos) {
+	stmt.From = from
+	stmt.To = to
+}
+func (stmt *IfStmt) SetTrueStmt(t Stmt) {
+	stmt.Then = t
+}
+func (stmt *IfStmt) SetFalseStmt(f Stmt) {
+	stmt.Else = f
+}
+func (stmt *IfDefStmt) Pos() token.Pos { return stmt.From }
+func (stmt *IfDefStmt) End() token.Pos { return stmt.To }
+func (*IfDefStmt) stmtNode()           {}
+func (stmt *IfDefStmt) SetFromTO(from, to token.Pos) {
+	stmt.From = from
+	stmt.To = to
+}
+func (stmt *IfDefStmt) SetTrueStmt(t Stmt) {
+	stmt.Then = t
+}
+func (stmt *IfDefStmt) SetFalseStmt(f Stmt) {
+	stmt.Else = f
+}
+func (stmt *IfNdefStmt) Pos() token.Pos { return stmt.From }
+func (stmt *IfNdefStmt) End() token.Pos { return stmt.To }
+func (*IfNdefStmt) stmtNode()           {}
+func (stmt *IfNdefStmt) SetFromTO(from, to token.Pos) {
+	stmt.From = from
+	stmt.To = to
+}
+func (stmt *IfNdefStmt) SetTrueStmt(t Stmt) {
+	stmt.Then = t
+}
+func (stmt *IfNdefStmt) SetFalseStmt(f Stmt) {
+	stmt.Else = f
+}
+func (stmt *ElseIfStmt) Pos() token.Pos { return stmt.From }
+func (stmt *ElseIfStmt) End() token.Pos { return stmt.To }
+func (*ElseIfStmt) stmtNode()           {}
+func (stmt *ElseIfStmt) SetFromTO(from, to token.Pos) {
+	stmt.From = from
+	stmt.To = to
+}
+func (stmt *ElseIfStmt) SetTrueStmt(t Stmt) {
+	stmt.Then = t
+}
+func (stmt *ElseIfStmt) SetFalseStmt(f Stmt) {
+	stmt.Else = f
+}
 func (t *UnaryExpr) Pos() token.Pos { return t.Offset }
 func (t *UnaryExpr) End() token.Pos { return t.X.End() }
 func (*UnaryExpr) exprNode()        {}
@@ -293,17 +386,17 @@ func (t MacroLitArray) End() token.Pos {
 	return 0
 }
 
-func (t *MacroLitArray) AddLit(liter MacroLiter) {
-	l := len(*t)
-	if l > 0 {
-		ta, okl := liter.(*Text)
-		ea, oke := (*t)[l-1].(*Text)
-		if okl && oke {
-			ea.Append(ta)
-			(*t)[l-1] = ea
-			return
-		}
-	}
+func (t *MacroLitArray) Append(liter MacroLiter) {
+	//l := len(*t)
+	//if l > 0 {
+	//	ta, okl := liter.(*Text)
+	//	ea, oke := (*t)[l-1].(*Text)
+	//	if okl && oke {
+	//		ea.Append(ta)
+	//		(*t)[l-1] = ea
+	//		return
+	//	}
+	//}
 	*t = append(*t, liter)
 }
 

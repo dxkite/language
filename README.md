@@ -5,8 +5,8 @@ the repo to parse language
 - [ ] macro language (preprocessor)
     - [x] tokenizer
     - [x] scanner
-    - [ ] parser
-    - [ ] interpreter
+    - [x] parser
+    - [ ] :hammer: interpreter
 - [ ] c language ast parser
     - [ ] tokenizer
     - [ ] scanner

@@ -10,13 +10,14 @@ import (
 
 // 词法扫描
 type Scanner struct {
-	src          []byte    // source
-	ch           rune      // current character
-	offset       int       // character offset
-	rdOffset     int       // reading offset (position after current character)
-	isLineStart  bool      // line start
-	line, column int       // position
-	Err          ErrorList // error list
+	src         []byte // source
+	ch          rune   // current character
+	offset      int    // character offset
+	rdOffset    int    // reading offset (position after current character)
+	isLineStart bool   // line start
+
+	PosInfo token.FilePos // file position
+	Err     ErrorList     // error list
 }
 
 // Init
@@ -25,11 +26,10 @@ func (s *Scanner) Init(src []byte) {
 	s.ch = ' '
 	s.offset = 0
 	s.rdOffset = 0
-	s.line = 1
-	s.column = 0
 	s.Err.Reset()
 	s.next()
 	s.isLineStart = true
+	s.PosInfo.Init(src)
 }
 
 func (s *Scanner) next() {
@@ -38,8 +38,6 @@ func (s *Scanner) next() {
 		s.offset = s.rdOffset
 		if s.ch == '\n' {
 			s.isLineStart = true
-			s.line++
-			s.column = 0
 		}
 		r, w := rune(s.src[s.rdOffset]), 1
 		switch {
@@ -53,7 +51,6 @@ func (s *Scanner) next() {
 			}
 		}
 		s.rdOffset += w
-		s.column += w
 		s.ch = r
 	} else {
 		s.offset = len(s.src)
@@ -77,7 +74,7 @@ func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
 		case "ifdef":
 			tok = token.IFDEF
 		case "ifndef":
-			tok = token.IFNODEF
+			tok = token.IFNDEF
 		case "else":
 			tok = token.ELSE
 		case "elif":
@@ -92,6 +89,10 @@ func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
 			tok = token.DEFINE
 		case "error":
 			tok = token.ERROR
+		case "pragma":
+			tok = token.PRAGMA
+		case "warning":
+			tok = token.WARNING
 		}
 	case isDecimal(ch):
 		tok, lit = s.scanNumber()
@@ -107,6 +108,11 @@ func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
 		tok = token.MACRO
 		lit = "#"
 		s.next()
+	case ch == '\\' && s.tryBackslashNewLine():
+		s.next()
+		s.scanNewLine()
+		tok = token.BACKSLASH_NEWLINE
+		lit = string(s.src[offset:s.offset])
 	default:
 		s.next()
 		switch ch {
@@ -207,11 +213,12 @@ func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
 				tok = token.LNOT
 				lit = string(ch)
 			}
-		case '\\':
-			tok = token.BACKSLASH
-			lit = string(ch)
+		case '\r':
+			tok = token.NEWLINE
+			s.scanNewLine()
+			lit = string(s.src[offset:s.offset])
 		case '\n':
-			tok = token.LF
+			tok = token.NEWLINE
 			lit = string(ch)
 		case '#':
 			if s.ch == '#' {
@@ -358,12 +365,15 @@ func (s *Scanner) scanComment() (tok token.Token, lit string) {
 	if s.ch == '*' {
 		tok = token.BLOCK_COMMENT
 		s.next()
-		for s.ch != '*' && s.peek() != '/' {
+		for {
 			if s.ch < 0 {
 				s.error(s.offset, "comment not terminated")
 				goto exit
 			}
 			s.next()
+			if s.ch == '*' && s.peek() == '/' {
+				break
+			}
 		}
 		s.next() // *
 		s.next() // /
@@ -443,7 +453,10 @@ func (s *Scanner) scanNumberBase(base int) {
 }
 
 func (s *Scanner) isEndOfText() bool {
-	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("\\/'\"(),+-*%&|=^~<>!\n#", string(s.ch)) {
+	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("\\/'\"(),+-*%&|=^~<>!\n\r#", string(s.ch)) {
+		if s.ch == '\\' {
+			return s.tryBackslashNewLine()
+		}
 		return true
 	}
 	return false
@@ -463,9 +476,8 @@ func (s *Scanner) CloneWithoutSrc() *Scanner {
 		offset:      s.offset,
 		rdOffset:    s.rdOffset,
 		isLineStart: s.isLineStart,
-		line:        s.line,
-		column:      s.column,
 		Err:         s.Err,
+		PosInfo:     s.PosInfo,
 	}
 }
 
@@ -484,16 +496,16 @@ func (s *Scanner) save() *Scanner {
 		offset:      s.offset,
 		rdOffset:    s.rdOffset,
 		isLineStart: s.isLineStart,
-		line:        s.line,
-		column:      s.column,
 		Err:         s.Err,
 	}
 }
 
 func (s *Scanner) reset(state *Scanner) {
 	src := s.src
+	pos := s.PosInfo
 	*s = *state
 	s.src = src
+	s.PosInfo = pos
 }
 
 func (s *Scanner) skipWhitespace() {
@@ -502,8 +514,35 @@ func (s *Scanner) skipWhitespace() {
 	}
 }
 
+func (s *Scanner) tryBackslashNewLine() bool {
+	ss := s.save()
+	defer s.reset(ss)
+	ok := false
+	if s.ch == '\\' {
+		s.next()
+		for s.ch == '\r' {
+			s.next()
+			ok = true
+		}
+		if s.ch == '\n' {
+			s.next()
+			ok = true
+		}
+	}
+	return ok
+}
+
+func (s *Scanner) scanNewLine() {
+	for s.ch == '\r' {
+		s.next()
+	}
+	if s.ch == '\n' {
+		s.next()
+	}
+}
+
 func (s *Scanner) error(offs int, msg string) {
-	p := Position{Offset: offs, Line: s.line, Column: s.column}
+	p := s.PosInfo.CreatePosition(token.Pos(offs))
 	s.Err.Add(p, msg)
 }
 

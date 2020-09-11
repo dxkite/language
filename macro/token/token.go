@@ -60,12 +60,12 @@ const (
 	QUOTE        // ’
 	DOUBLE_QUOTE // "
 
-	LPAREN    // (
-	COMMA     // ,
-	RPAREN    // )
-	LF        // \n
-	BACKSLASH // \
-	EQU       // =
+	LPAREN            // (
+	COMMA             // ,
+	RPAREN            // )
+	NEWLINE           // \r*\n
+	BACKSLASH_NEWLINE // \
+	EQU               // =
 
 	operator_end
 
@@ -73,7 +73,7 @@ const (
 	INCLUDE
 	IF
 	IFDEF
-	IFNODEF
+	IFNDEF
 	ELSE
 	ELSEIF
 	ENDIF
@@ -82,6 +82,8 @@ const (
 	ERROR
 	DEFINED
 	DEFINE
+	PRAGMA
+	WARNING
 	keyword_end
 )
 
@@ -121,32 +123,34 @@ var tokens = [...]string{
 	LSS: "<",
 	GTR: ">",
 
-	NEQ:          "!=",
-	LEQ:          "<=",
-	GEQ:          ">=",
-	MACRO:        "#",
-	SHARP:        "#",
-	DOUBLE_SHARP: "##",
-	QUOTE:        "'",
-	DOUBLE_QUOTE: "\"",
-	BACKSLASH:    "\\",
-	LF:           "\\n",
-	LPAREN:       "(",
-	COMMA:        ",",
-	RPAREN:       ")",
+	NEQ:               "!=",
+	LEQ:               "<=",
+	GEQ:               ">=",
+	MACRO:             "#",
+	SHARP:             "#",
+	DOUBLE_SHARP:      "##",
+	QUOTE:             "'",
+	DOUBLE_QUOTE:      "\"",
+	BACKSLASH_NEWLINE: "\\\n",
+	NEWLINE:           "\\n",
+	LPAREN:            "(",
+	COMMA:             ",",
+	RPAREN:            ")",
 
-	INCLUDE: "#include",
-	IF:      "#if",
-	IFDEF:   "#ifdef",
-	IFNODEF: "#ifndef",
-	ELSE:    "#else",
-	ELSEIF:  "#elif",
-	ENDIF:   "#endif",
-	UNDEF:   "#undef",
-	LINE:    "#line",
-	ERROR:   "#error",
+	INCLUDE: "include",
+	IF:      "if",
+	IFDEF:   "ifdef",
+	IFNDEF:  "ifndef",
+	ELSE:    "else",
+	ELSEIF:  "elif",
+	ENDIF:   "endif",
+	UNDEF:   "undef",
+	LINE:    "line",
+	ERROR:   "error",
 	DEFINED: "defined",
-	DEFINE:  "#define",
+	DEFINE:  "define",
+	PRAGMA:  "pragma",
+	WARNING: "warning",
 }
 
 func (tok Token) String() string {
@@ -171,59 +175,61 @@ func (tok Token) IsOperator() bool { return operator_beg < tok && tok < operator
 func (tok Token) IsKeyword() bool { return keyword_beg < tok && tok < keyword_end }
 
 var tokenName = [...]string{
-	ILLEGAL:       "ILLEGAL",
-	EOF:           "EOF",
-	BLOCK_COMMENT: "BLOCK_COMMENT",
-	COMMENT:       "COMMENT",
-	TEXT:          "TEXT",
-	IDENT:         "IDENT",
-	INT:           "INT",
-	FLOAT:         "FLOAT",
-	CHAR:          "CHAR",
-	STRING:        "STRING",
-	ADD:           "ADD",
-	SUB:           "SUB",
-	MUL:           "MUL",
-	QUO:           "QUO",
-	REM:           "REM",
-	AND:           "AND",
-	OR:            "OR",
-	XOR:           "XOR",
-	SHL:           "SHL",
-	SHR:           "SHR",
-	NOT:           "NOT",
-	LAND:          "LAND",
-	LOR:           "LOR",
-	LNOT:          "LNOT",
-	EQL:           "EQL",
-	LSS:           "LSS",
-	GTR:           "GTR",
-	NEQ:           "NEQ",
-	LEQ:           "LEQ",
-	GEQ:           "GEQ",
-	MACRO:         "MACRO",
-	SHARP:         "SHARP",
-	DOUBLE_SHARP:  "DOUBLE_SHARP",
-	QUOTE:         "QUOTE",
-	DOUBLE_QUOTE:  "DOUBLE_QUOTE",
-	BACKSLASH:     "BACKSLASH",
-	LF:            "LF",
-	EQU:           "EQU",
-	LPAREN:        "LPAREN",
-	COMMA:         "COMMA",
-	RPAREN:        "RPAREN",
-	INCLUDE:       "INCLUDE",
-	IF:            "IF",
-	IFDEF:         "IFDEF",
-	IFNODEF:       "IFNODEF",
-	UNDEF:         "UNDEF",
-	ELSE:          "ELSE",
-	ELSEIF:        "ELSEIF",
-	ENDIF:         "ENDIF",
-	LINE:          "LINE",
-	ERROR:         "ERROR",
-	DEFINED:       "DEFINED",
-	DEFINE:        "DEFINE",
+	ILLEGAL:           "ILLEGAL",
+	EOF:               "EOF",
+	BLOCK_COMMENT:     "BLOCK_COMMENT",
+	COMMENT:           "COMMENT",
+	TEXT:              "TEXT",
+	IDENT:             "IDENT",
+	INT:               "INT",
+	FLOAT:             "FLOAT",
+	CHAR:              "CHAR",
+	STRING:            "STRING",
+	ADD:               "ADD",
+	SUB:               "SUB",
+	MUL:               "MUL",
+	QUO:               "QUO",
+	REM:               "REM",
+	AND:               "AND",
+	OR:                "OR",
+	XOR:               "XOR",
+	SHL:               "SHL",
+	SHR:               "SHR",
+	NOT:               "NOT",
+	LAND:              "LAND",
+	LOR:               "LOR",
+	LNOT:              "LNOT",
+	EQL:               "EQL",
+	LSS:               "LSS",
+	GTR:               "GTR",
+	NEQ:               "NEQ",
+	LEQ:               "LEQ",
+	GEQ:               "GEQ",
+	MACRO:             "MACRO",
+	SHARP:             "SHARP",
+	DOUBLE_SHARP:      "DOUBLE_SHARP",
+	QUOTE:             "QUOTE",
+	DOUBLE_QUOTE:      "DOUBLE_QUOTE",
+	BACKSLASH_NEWLINE: "BACKSLASH_NEWLINE",
+	NEWLINE:           "NEWLINE",
+	EQU:               "EQU",
+	LPAREN:            "LPAREN",
+	COMMA:             "COMMA",
+	RPAREN:            "RPAREN",
+	INCLUDE:           "INCLUDE",
+	IF:                "IF",
+	IFDEF:             "IFDEF",
+	IFNDEF:            "IFNDEF",
+	UNDEF:             "UNDEF",
+	ELSE:              "ELSE",
+	ELSEIF:            "ELSEIF",
+	ENDIF:             "ENDIF",
+	LINE:              "LINE",
+	ERROR:             "ERROR",
+	DEFINED:           "DEFINED",
+	DEFINE:            "DEFINE",
+	PRAGMA:            "PRAGMA",
+	WARNING:           "WARNING",
 }
 
 type TokenName Token
