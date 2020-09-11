@@ -24,7 +24,7 @@ block comment
 	~22
 	/* some comment */printf("hello \" world",12 342, '\''); /* some comment */
 } ''
-STR(a 123 41'2/24"51 12, 'b')
+STR(a 123 41'2/24"51 12, 'b'. '\0', '\100', '\'')
 #ifndef A
 #error missing a config
 #endif
@@ -49,6 +49,7 @@ int ch = 123;
 #define B(v) $A(123v awd)
 B(awd)
 123B
+"a\0a" "\xaabbcc" "\xFFbbcc\t\""
 #undef A` + "#define a \r\r\r\r\n#define b\\\r\r\r\r\n")
 
 func TestScanner_Scan(t *testing.T) {
@@ -73,32 +74,33 @@ func TestScanner_Scan(t *testing.T) {
 		{274, token.TEXT, "\t"}, {275, token.NOT, "~"}, {276, token.INT, "22"}, {278, token.NEWLINE, "\n"},
 		{279, token.TEXT, "\t"}, {280, token.BLOCK_COMMENT, "/* some comment */"}, {298, token.IDENT, "printf"}, {304, token.LPAREN, "("}, {305, token.STRING, "\"hello \\\" world\""}, {321, token.COMMA, ","}, {322, token.INT, "12"}, {324, token.TEXT, " "}, {325, token.INT, "342"}, {328, token.COMMA, ","}, {329, token.TEXT, " "}, {330, token.CHAR, "'\\''"}, {334, token.RPAREN, ")"}, {335, token.TEXT, "; "}, {337, token.BLOCK_COMMENT, "/* some comment */"}, {355, token.NEWLINE, "\n"},
 		{356, token.TEXT, "} "}, {358, token.QUOTE, "'"}, {359, token.QUOTE, "'"}, {360, token.NEWLINE, "\n"},
-		{361, token.IDENT, "STR"}, {364, token.LPAREN, "("}, {365, token.IDENT, "a"}, {366, token.TEXT, " "}, {367, token.INT, "123"}, {370, token.TEXT, " "}, {371, token.INT, "41"}, {373, token.QUOTE, "'"}, {374, token.INT, "2"}, {375, token.QUO, "/"}, {376, token.INT, "24"}, {378, token.DOUBLE_QUOTE, "\""}, {379, token.INT, "51"}, {381, token.TEXT, " "}, {382, token.INT, "12"}, {384, token.COMMA, ","}, {385, token.TEXT, " "}, {386, token.CHAR, "'b'"}, {389, token.RPAREN, ")"}, {390, token.NEWLINE, "\n"},
-		{391, token.MACRO, "#"}, {392, token.IFNDEF, "ifndef"}, {398, token.TEXT, " "}, {399, token.IDENT, "A"}, {400, token.NEWLINE, "\n"},
-		{401, token.MACRO, "#"}, {402, token.ERROR, "error"}, {407, token.TEXT, " "}, {408, token.IDENT, "missing"}, {415, token.TEXT, " "}, {416, token.IDENT, "a"}, {417, token.TEXT, " "}, {418, token.IDENT, "config"}, {424, token.NEWLINE, "\n"},
-		{425, token.MACRO, "#"}, {426, token.ENDIF, "endif"}, {431, token.NEWLINE, "\n"},
-		{432, token.SHR, ">>"}, {434, token.GEQ, ">="}, {436, token.OR, "|"}, {437, token.LNOT, "!"}, {438, token.TEXT, " "}, {439, token.EQU, "="}, {440, token.TEXT, " "}, {441, token.NEQ, "!="}, {443, token.TEXT, " "}, {444, token.LEQ, "<="}, {446, token.TEXT, " "}, {447, token.SHL, "<<"}, {449, token.TEXT, " "}, {450, token.MUL, "*"}, {451, token.TEXT, " "}, {452, token.REM, "%"}, {453, token.TEXT, " "}, {454, token.LAND, "&&"}, {456, token.TEXT, " "}, {457, token.AND, "&"}, {458, token.TEXT, " "}, {459, token.LOR, "||"}, {461, token.TEXT, " "}, {462, token.OR, "|"}, {463, token.TEXT, "☺"}, {466, token.IDENT, "中文"}, {472, token.TEXT, " "}, {473, token.EQL, "=="}, {475, token.NEWLINE, "\n"},
-		{476, token.MACRO, "#"}, {477, token.IF, "if"}, {479, token.TEXT, " "}, {480, token.LNOT, "!"}, {481, token.DEFINED, "defined"}, {488, token.TEXT, " "}, {489, token.IDENT, "A"}, {490, token.NEWLINE, "\n"},
-		{491, token.MACRO, "#"}, {492, token.ELSEIF, "elif"}, {496, token.TEXT, " "}, {497, token.FLOAT, "1f"}, {499, token.TEXT, " "}, {500, token.ADD, "+"}, {501, token.TEXT, " "}, {502, token.IDENT, "A"}, {503, token.TEXT, "  "}, {505, token.GTR, ">"}, {506, token.TEXT, " "}, {507, token.INT, "2020uL"}, {513, token.NEWLINE, "\n"},
-		{514, token.MACRO, "#"}, {515, token.IFDEF, "ifdef"}, {520, token.TEXT, " "}, {521, token.IDENT, "B"}, {522, token.NEWLINE, "\n"},
-		{523, token.MACRO, "#"}, {524, token.ELSE, "else"}, {528, token.NEWLINE, "\n"},
-		{529, token.MACRO, "#"}, {530, token.ELSEIF, "elif"}, {534, token.NEWLINE, "\n"},
-		{535, token.MACRO, "#"}, {536, token.DEFINE, "define"}, {542, token.TEXT, " "}, {543, token.IDENT, "$A"}, {545, token.TEXT, " "}, {546, token.INT, "123"}, {549, token.NEWLINE, "\n"},
-		{550, token.MACRO, "#"}, {551, token.TEXT, " "}, {552, token.IDENT, "hello"}, {557, token.TEXT, " "}, {558, token.IDENT, "world"}, {563, token.NEWLINE, "\n"},
-		{564, token.MACRO, "#"}, {565, token.LINE, "line"}, {569, token.TEXT, " "}, {570, token.INT, "30"}, {572, token.TEXT, " "}, {573, token.STRING, "\"test.c\""}, {581, token.TEXT, " "}, {582, token.INT, "012345678"}, {591, token.NEWLINE, "\n"},
-		{592, token.MACRO, "#"}, {593, token.ERROR, "error"}, {598, token.TEXT, " "}, {599, token.IDENT, "b"}, {600, token.TEXT, " "}, {601, token.IDENT, "is"}, {603, token.TEXT, " \\"}, {605, token.NEWLINE, "\n"},
-		{606, token.TEXT, "\t"}, {607, token.DEFINED, "defined"}, {614, token.NEWLINE, "\n"},
-		{615, token.MACRO, "#"}, {616, token.ERROR, "error"}, {621, token.TEXT, " "}, {622, token.IDENT, "b"}, {623, token.TEXT, " "}, {624, token.IDENT, "is"}, {626, token.TEXT, " \\ "}, {629, token.INT, "12"}, {631, token.TEXT, " "}, {632, token.NEWLINE, "\n"},
-		{633, token.TEXT, "\t"}, {634, token.DEFINED, "defined"}, {641, token.NEWLINE, "\n"},
-		{642, token.MACRO, "#"}, {643, token.ENDIF, "endif"}, {648, token.NEWLINE, "\n"},
-		{649, token.MACRO, "#"}, {650, token.IF, "if"}, {652, token.TEXT, " "}, {653, token.INT, "123BCDE123"}, {663, token.NEWLINE, "\n"},
-		{664, token.IDENT, "int"}, {667, token.TEXT, " "}, {668, token.IDENT, "ch"}, {670, token.TEXT, " "}, {671, token.EQU, "="}, {672, token.TEXT, " "}, {673, token.INT, "123"}, {676, token.TEXT, ";"}, {677, token.NEWLINE, "\n"},
-		{678, token.MACRO, "#"}, {679, token.ENDIF, "endif"}, {684, token.NEWLINE, "\n"},
-		{685, token.MACRO, "#"}, {686, token.DEFINE, "define"}, {692, token.TEXT, " "}, {693, token.IDENT, "$A"}, {695, token.LPAREN, "("}, {696, token.IDENT, "a"}, {697, token.RPAREN, ")"}, {698, token.TEXT, " "}, {699, token.INT, "123"}, {702, token.SHARP, "#"}, {703, token.IDENT, "a"}, {704, token.NEWLINE, "\n"},
-		{705, token.MACRO, "#"}, {706, token.DEFINE, "define"}, {712, token.TEXT, " "}, {713, token.IDENT, "B"}, {714, token.LPAREN, "("}, {715, token.IDENT, "v"}, {716, token.RPAREN, ")"}, {717, token.TEXT, " "}, {718, token.IDENT, "$A"}, {720, token.LPAREN, "("}, {721, token.INT, "123v"}, {725, token.TEXT, " "}, {726, token.IDENT, "awd"}, {729, token.RPAREN, ")"}, {730, token.NEWLINE, "\n"},
-		{731, token.IDENT, "B"}, {732, token.LPAREN, "("}, {733, token.IDENT, "awd"}, {736, token.RPAREN, ")"}, {737, token.NEWLINE, "\n"},
-		{738, token.INT, "123B"}, {742, token.NEWLINE, "\n"},
-		{743, token.MACRO, "#"}, {744, token.UNDEF, "undef"}, {749, token.TEXT, " "}, {750, token.IDENT, "A"}, {751, token.EOF, ""},
+		{361, token.IDENT, "STR"}, {364, token.LPAREN, "("}, {365, token.IDENT, "a"}, {366, token.TEXT, " "}, {367, token.INT, "123"}, {370, token.TEXT, " "}, {371, token.INT, "41"}, {373, token.QUOTE, "'"}, {374, token.INT, "2"}, {375, token.QUO, "/"}, {376, token.INT, "24"}, {378, token.DOUBLE_QUOTE, "\""}, {379, token.INT, "51"}, {381, token.TEXT, " "}, {382, token.INT, "12"}, {384, token.COMMA, ","}, {385, token.TEXT, " "}, {386, token.CHAR, "'b'"}, {389, token.TEXT, ". "}, {391, token.CHAR, "'\\0'"}, {395, token.COMMA, ","}, {396, token.TEXT, " "}, {397, token.CHAR, "'\\100'"}, {403, token.COMMA, ","}, {404, token.TEXT, " "}, {405, token.CHAR, "'\\''"}, {409, token.RPAREN, ")"}, {410, token.NEWLINE, "\n"},
+		{411, token.MACRO, "#"}, {412, token.IFNDEF, "ifndef"}, {418, token.TEXT, " "}, {419, token.IDENT, "A"}, {420, token.NEWLINE, "\n"},
+		{421, token.MACRO, "#"}, {422, token.ERROR, "error"}, {427, token.TEXT, " "}, {428, token.IDENT, "missing"}, {435, token.TEXT, " "}, {436, token.IDENT, "a"}, {437, token.TEXT, " "}, {438, token.IDENT, "config"}, {444, token.NEWLINE, "\n"},
+		{445, token.MACRO, "#"}, {446, token.ENDIF, "endif"}, {451, token.NEWLINE, "\n"},
+		{452, token.SHR, ">>"}, {454, token.GEQ, ">="}, {456, token.OR, "|"}, {457, token.LNOT, "!"}, {458, token.TEXT, " "}, {459, token.EQU, "="}, {460, token.TEXT, " "}, {461, token.NEQ, "!="}, {463, token.TEXT, " "}, {464, token.LEQ, "<="}, {466, token.TEXT, " "}, {467, token.SHL, "<<"}, {469, token.TEXT, " "}, {470, token.MUL, "*"}, {471, token.TEXT, " "}, {472, token.REM, "%"}, {473, token.TEXT, " "}, {474, token.LAND, "&&"}, {476, token.TEXT, " "}, {477, token.AND, "&"}, {478, token.TEXT, " "}, {479, token.LOR, "||"}, {481, token.TEXT, " "}, {482, token.OR, "|"}, {483, token.TEXT, "☺"}, {486, token.IDENT, "中文"}, {492, token.TEXT, " "}, {493, token.EQL, "=="}, {495, token.NEWLINE, "\n"},
+		{496, token.MACRO, "#"}, {497, token.IF, "if"}, {499, token.TEXT, " "}, {500, token.LNOT, "!"}, {501, token.DEFINED, "defined"}, {508, token.TEXT, " "}, {509, token.IDENT, "A"}, {510, token.NEWLINE, "\n"},
+		{511, token.MACRO, "#"}, {512, token.ELSEIF, "elif"}, {516, token.TEXT, " "}, {517, token.FLOAT, "1f"}, {519, token.TEXT, " "}, {520, token.ADD, "+"}, {521, token.TEXT, " "}, {522, token.IDENT, "A"}, {523, token.TEXT, "  "}, {525, token.GTR, ">"}, {526, token.TEXT, " "}, {527, token.INT, "2020uL"}, {533, token.NEWLINE, "\n"},
+		{534, token.MACRO, "#"}, {535, token.IFDEF, "ifdef"}, {540, token.TEXT, " "}, {541, token.IDENT, "B"}, {542, token.NEWLINE, "\n"},
+		{543, token.MACRO, "#"}, {544, token.ELSE, "else"}, {548, token.NEWLINE, "\n"},
+		{549, token.MACRO, "#"}, {550, token.ELSEIF, "elif"}, {554, token.NEWLINE, "\n"},
+		{555, token.MACRO, "#"}, {556, token.DEFINE, "define"}, {562, token.TEXT, " "}, {563, token.IDENT, "$A"}, {565, token.TEXT, " "}, {566, token.INT, "123"}, {569, token.NEWLINE, "\n"},
+		{570, token.MACRO, "#"}, {571, token.TEXT, " "}, {572, token.IDENT, "hello"}, {577, token.TEXT, " "}, {578, token.IDENT, "world"}, {583, token.NEWLINE, "\n"},
+		{584, token.MACRO, "#"}, {585, token.LINE, "line"}, {589, token.TEXT, " "}, {590, token.INT, "30"}, {592, token.TEXT, " "}, {593, token.STRING, "\"test.c\""}, {601, token.TEXT, " "}, {602, token.INT, "012345678"}, {611, token.NEWLINE, "\n"},
+		{612, token.MACRO, "#"}, {613, token.ERROR, "error"}, {618, token.TEXT, " "}, {619, token.IDENT, "b"}, {620, token.TEXT, " "}, {621, token.IDENT, "is"}, {623, token.TEXT, " "}, {624, token.BACKSLASH_NEWLINE, "\\\n"}, {626, token.TEXT, "\t"}, {627, token.DEFINED, "defined"}, {634, token.NEWLINE, "\n"},
+		{635, token.MACRO, "#"}, {636, token.ERROR, "error"}, {641, token.TEXT, " "}, {642, token.IDENT, "b"}, {643, token.TEXT, " "}, {644, token.IDENT, "is"}, {646, token.TEXT, " \\ "}, {649, token.INT, "12"}, {651, token.TEXT, " "}, {652, token.NEWLINE, "\n"},
+		{653, token.TEXT, "\t"}, {654, token.DEFINED, "defined"}, {661, token.NEWLINE, "\n"},
+		{662, token.MACRO, "#"}, {663, token.ENDIF, "endif"}, {668, token.NEWLINE, "\n"},
+		{669, token.MACRO, "#"}, {670, token.IF, "if"}, {672, token.TEXT, " "}, {673, token.INT, "123BCDE123"}, {683, token.NEWLINE, "\n"},
+		{684, token.IDENT, "int"}, {687, token.TEXT, " "}, {688, token.IDENT, "ch"}, {690, token.TEXT, " "}, {691, token.EQU, "="}, {692, token.TEXT, " "}, {693, token.INT, "123"}, {696, token.TEXT, ";"}, {697, token.NEWLINE, "\n"},
+		{698, token.MACRO, "#"}, {699, token.ENDIF, "endif"}, {704, token.NEWLINE, "\n"},
+		{705, token.MACRO, "#"}, {706, token.DEFINE, "define"}, {712, token.TEXT, " "}, {713, token.IDENT, "$A"}, {715, token.LPAREN, "("}, {716, token.IDENT, "a"}, {717, token.RPAREN, ")"}, {718, token.TEXT, " "}, {719, token.INT, "123"}, {722, token.SHARP, "#"}, {723, token.IDENT, "a"}, {724, token.NEWLINE, "\n"},
+		{725, token.MACRO, "#"}, {726, token.DEFINE, "define"}, {732, token.TEXT, " "}, {733, token.IDENT, "B"}, {734, token.LPAREN, "("}, {735, token.IDENT, "v"}, {736, token.RPAREN, ")"}, {737, token.TEXT, " "}, {738, token.IDENT, "$A"}, {740, token.LPAREN, "("}, {741, token.INT, "123v"}, {745, token.TEXT, " "}, {746, token.IDENT, "awd"}, {749, token.RPAREN, ")"}, {750, token.NEWLINE, "\n"},
+		{751, token.IDENT, "B"}, {752, token.LPAREN, "("}, {753, token.IDENT, "awd"}, {756, token.RPAREN, ")"}, {757, token.NEWLINE, "\n"},
+		{758, token.INT, "123B"}, {762, token.NEWLINE, "\n"},
+		{763, token.STRING, "\"a\\0a\""}, {769, token.TEXT, " "}, {770, token.STRING, "\"\\xaabbcc\""}, {780, token.TEXT, " "}, {781, token.STRING, "\"\\xFFbbcc\\t\\\"\""}, {795, token.NEWLINE, "\n"},
+		{796, token.MACRO, "#"}, {797, token.UNDEF, "undef"}, {802, token.TEXT, " "}, {803, token.IDENT, "A"}, {804, token.SHARP, "#"}, {805, token.DEFINE, "define"}, {811, token.TEXT, " "}, {812, token.IDENT, "a"}, {813, token.TEXT, " "}, {814, token.NEWLINE, "\r\r\r\r\n"},
+		{819, token.MACRO, "#"}, {820, token.DEFINE, "define"}, {826, token.TEXT, " "}, {827, token.IDENT, "b"}, {828, token.BACKSLASH_NEWLINE, "\\\r\r\r\r\n"}, {834, token.EOF, ""},
 	}
 
 	errors := ErrorList{

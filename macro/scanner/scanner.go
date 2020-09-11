@@ -258,25 +258,80 @@ func isLetter(ch rune) bool {
 func isDigit(ch rune) bool {
 	return isDecimal(ch) || ch >= utf8.RuneSelf && unicode.IsDigit(ch)
 }
+func digitVal(ch rune) int {
+	switch {
+	case '0' <= ch && ch <= '9':
+		return int(ch - '0')
+	case 'a' <= lower(ch) && lower(ch) <= 'f':
+		return int(lower(ch) - 'a' + 10)
+	}
+	return 16
+}
+
+// scan escape
+func (s *Scanner) scanEscape(quote rune) bool {
+	offs := s.offset
+	var n int
+	var base, max uint32
+	switch s.ch {
+	case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', quote:
+		s.next()
+		return true
+	case '0', '1', '2', '3', '4', '5', '6', '7':
+		n, base, max = 3, 8, 255
+	case 'x':
+		s.next()
+		n, base, max = 2, 16, 255
+	default:
+		msg := "unknown escape sequence"
+		if s.ch < 0 {
+			msg = "escape sequence not terminated"
+		}
+		s.error(offs, msg)
+		return false
+	}
+	var x uint32
+	for n > 0 {
+		if base == 8 && !isDecimal(s.ch) {
+			break
+		}
+		if base == 16 && !isHex(lower(s.ch)) {
+			break
+		}
+		d := uint32(digitVal(s.ch))
+		if d >= base {
+			msg := fmt.Sprintf("illegal character %#U in escape sequence", s.ch)
+			if s.ch < 0 {
+				msg = "escape sequence not terminated"
+			}
+			s.error(s.offset, msg)
+			return false
+		}
+		x = x*base + d
+		s.next()
+		n--
+	}
+	if x > max {
+		s.error(offs, "escape sequence is invalid code point")
+		return false
+	}
+	return true
+}
 
 // 扫描字符串
 func (s *Scanner) scanString() string {
 	offs := s.offset
 	s.next()
 	for s.ch > 0 && s.ch != '"' {
-		if s.ch == '\\' && s.peek() == '"' {
+		if s.ch == '\\' {
 			s.next()
+			s.scanEscape('"')
+		} else {
 			s.next()
 		}
-		s.next()
 	}
 	s.next()
 	return string(s.src[offs:s.offset])
-}
-
-// 获取字面量
-func (s *Scanner) Lit(start, stop token.Pos) string {
-	return string(s.src[start:stop])
 }
 
 // 尝试解析字符串
@@ -288,16 +343,22 @@ func (s *Scanner) tryString() bool {
 		if s.ch == '\n' {
 			break
 		}
-		if s.ch == '\\' && s.peek() == '"' {
+		if s.ch == '\\' {
 			s.next()
+			s.scanEscape('"')
+		} else {
 			s.next()
 		}
-		s.next()
 	}
 	if s.ch < 0 || s.ch == '\n' {
 		return false
 	}
 	return true
+}
+
+// 获取字面量
+func (s *Scanner) Lit(start, stop token.Pos) string {
+	return string(s.src[start:stop])
 }
 
 // 扫描单个字符
@@ -307,10 +368,12 @@ func (s *Scanner) scanChar() string {
 	n := 0
 	for s.ch > 0 && s.ch != '\'' {
 		n++
-		if s.ch == '\\' && s.peek() == '\'' {
+		if s.ch == '\\' {
+			s.next()
+			s.scanEscape('\'')
+		} else {
 			s.next()
 		}
-		s.next()
 		if n > 1 {
 			s.error(s.offset, "error char")
 			break
@@ -328,10 +391,12 @@ func (s *Scanner) tryChar() bool {
 	n := 0
 	for s.ch > 0 && s.ch != '\'' {
 		n++
-		if s.ch == '\\' && s.peek() == '\'' {
+		if s.ch == '\\' {
+			s.next()
+			s.scanEscape('\'')
+		} else {
 			s.next()
 		}
-		s.next()
 		if n > 1 {
 			break
 		}

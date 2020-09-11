@@ -960,8 +960,8 @@ func testFile(name, src string, t *testing.T) {
 		fmt.Println(name, err)
 	}
 	if len(errors) > 0 {
-		a, _ := encode(stmts)
-		fmt.Println(string(a))
+		_, _ = encode(stmts)
+		//fmt.Println(string(a))
 		t.Error(errors)
 	}
 }
