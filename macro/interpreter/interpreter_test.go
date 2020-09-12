@@ -2,8 +2,12 @@ package interpreter
 
 import (
 	"dxkite.cn/language/macro/ast"
+	"dxkite.cn/language/macro/parser"
 	"dxkite.cn/language/macro/token"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -27,6 +31,7 @@ func Test_interpreter_evalLitExpr(t *testing.T) {
 	}
 }
 
+/*
 func TestGenBinaryExpr(t *testing.T) {
 	tf := []token.Token{
 		token.ADD,
@@ -111,5 +116,42 @@ func TestGenBinaryExpr(t *testing.T) {
 		tn := "token." + token.Name(tok).String()
 		op := tok.String()
 		fmt.Printf(btpl, tn, op, op, op, op)
+	}
+}
+
+*/
+
+func testFile(name, src string, t *testing.T) {
+	code, err := ioutil.ReadFile(src)
+	if err != nil {
+		t.Error(err)
+	}
+	p := parser.Parser{}
+	p.Init(code)
+	stmts := p.Parse()
+	for _, err := range p.ErrorList() {
+		// 194571
+		fmt.Println(name, err)
+	}
+	if len(p.ErrorList()) > 0 {
+		t.Error(p.ErrorList())
+	}
+	it := interpreter{}
+	it.Eval(stmts, src, p.FilePos())
+	fmt.Println(it.src.String())
+}
+
+func TestEval(t *testing.T) {
+	if err := filepath.Walk("testdata/", func(p string, info os.FileInfo, err error) error {
+		ext := filepath.Ext(p)
+		name := filepath.Base(p)
+		if ext == ".c" {
+			t.Run(p, func(t *testing.T) {
+				testFile(name, p, t)
+			})
+		}
+		return nil
+	}); err != nil {
+		t.Error(err)
 	}
 }

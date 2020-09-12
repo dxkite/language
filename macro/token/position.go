@@ -42,7 +42,7 @@ func (f *FilePos) Init(src []byte) {
 }
 
 func (f FilePos) CreatePosition(p Pos) (pos Position) {
-	if int(p) > 0 && int(p) < f.size {
+	if int(p) >= 0 && int(p) < f.size {
 		line := 0
 		column := 0
 		for i, l := range f.lines {

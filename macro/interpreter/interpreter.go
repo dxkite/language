@@ -3,9 +3,11 @@ package interpreter
 import (
 	"bytes"
 	"dxkite.cn/language/macro/ast"
+	"dxkite.cn/language/macro/parser"
 	"dxkite.cn/language/macro/token"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // 解释器
@@ -14,18 +16,91 @@ type interpreter struct {
 	Val map[string]string
 	// 已经定义的函数
 	Func map[string]ast.FuncDefineStmt
+	// 位置信息
+	pos token.FilePos
 	// 运行后的源码
-	src bytes.Buffer
+	src *bytes.Buffer
 }
 
 // 执行AST
-func (it interpreter) Eval(node ast.Node) []byte {
-	return nil
+func (it *interpreter) Eval(node ast.Node, name string, pos token.FilePos) []byte {
+	it.Val = map[string]string{
+		"__FILE__": strconv.QuoteToGraphic(name),
+	}
+	it.Func = map[string]ast.FuncDefineStmt{}
+	it.src = &bytes.Buffer{}
+	it.pos = pos
+	it.eval(node)
+	return it.src.Bytes()
+}
+
+// 执行AST
+func (it *interpreter) eval(node ast.Node) {
+	switch n := node.(type) {
+	case *ast.BlockStmt:
+		for _, sub := range *n {
+			it.eval(sub)
+		}
+	case *ast.MacroLitArray:
+		it.src.WriteString(it.evalLitArray(n, false))
+	case *ast.Ident:
+		it.src.WriteString(it.evalIdent(n))
+	case *ast.ValDefineStmt:
+		it.evalDefineVal(n)
+	}
 }
 
 // 解析表达式
 func (it interpreter) evalExpr(expr ast.Expr) interface{} {
 	return false
+}
+
+// 定义值
+func (it *interpreter) evalDefineVal(stmt *ast.ValDefineStmt) {
+	n := stmt.Name.Name
+	if _, ok := it.Val[n]; ok || it.isInnerDefine(n) {
+		it.errorf(stmt.Pos(), "warning: %s redefined", n)
+	}
+	it.Val[n] = it.evalLitArray(stmt.Body, true)
+	f := it.pos.CreatePosition(stmt.From).Line
+	t := it.pos.CreatePosition(stmt.To).Line
+	it.src.WriteString(strings.Repeat("\n", t-f+1))
+}
+
+// 内置定义
+func (it interpreter) isInnerDefine(name string) bool {
+	ar := []string{"__LINE__", "__FILE__", "__FUNCTION__"}
+	for _, n := range ar {
+		if n == name {
+			return true
+		}
+	}
+	return false
+}
+
+// 解析列表
+func (it interpreter) evalLitArray(array *ast.MacroLitArray, empty bool) string {
+	t := ""
+	for _, v := range *array {
+		switch vv := v.(type) {
+		case *ast.Text:
+			if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
+				t += vv.Text
+			}
+			if vv.Kind == token.BACKSLASH_NEWLINE && !empty {
+				t += "\n"
+			}
+		case *ast.MacroCallExpr:
+			t += it.evalCall(vv)
+		case *ast.Ident:
+			t += it.evalIdent(vv)
+		}
+	}
+	return t
+}
+
+func (it interpreter) evalCall(expr *ast.MacroCallExpr) string {
+	return ""
 }
 
 // 二元运算
@@ -85,8 +160,14 @@ func (it interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 }
 
 // 解析ID标识符
-func (it interpreter) evalIdent(*ast.Ident) string {
-	return ""
+func (it interpreter) evalIdent(id *ast.Ident) string {
+	if v, ok := it.Val[id.Name]; ok {
+		return v
+	}
+	if id.Name == "__LINE__" {
+		return strconv.Itoa(it.pos.CreatePosition(id.Pos()).Line)
+	}
+	return id.Name
 }
 
 // 解析字面量表达式去运算

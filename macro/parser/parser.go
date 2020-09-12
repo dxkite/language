@@ -850,6 +850,11 @@ func (p *Parser) nextIs(tok token.Token) bool {
 	return ok
 }
 
+// 位置信息
+func (p *Parser) FilePos() token.FilePos {
+	return p.scanner.PosInfo
+}
+
 func (p *Parser) ErrorList() scanner.ErrorList {
 	err := scanner.ErrorList{}
 	err.Merge(p.errors)
