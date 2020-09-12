@@ -37,6 +37,8 @@ func TestGenBinaryExpr(t *testing.T) {
 		token.GTR, // >
 		token.LEQ, // <=
 		token.GEQ, // >=
+		token.EQL, // ==
+		token.NEQ, // !=
 	}
 	ti := []token.Token{
 		token.REM, // %
@@ -49,8 +51,6 @@ func TestGenBinaryExpr(t *testing.T) {
 	tb := []token.Token{
 		token.LAND, // &&
 		token.LOR,  // ||
-		token.EQL,  // ==
-		token.NEQ,  // !=
 	}
 	ftpl := `case %s:
 		if ixo {
@@ -98,17 +98,17 @@ func TestGenBinaryExpr(t *testing.T) {
 		}
 	`
 	for _, tok := range tf {
-		tn := "token." + token.TokenName(tok).String()
+		tn := "token." + token.Name(tok).String()
 		op := tok.String()
 		fmt.Printf(ftpl, tn, op, op, op, op)
 	}
 	for _, tok := range ti {
-		tn := "token." + token.TokenName(tok).String()
+		tn := "token." + token.Name(tok).String()
 		op := tok.String()
 		fmt.Printf(itpl, tn, op, op, op, op)
 	}
 	for _, tok := range tb {
-		tn := "token." + token.TokenName(tok).String()
+		tn := "token." + token.Name(tok).String()
 		op := tok.String()
 		fmt.Printf(btpl, tn, op, op, op, op)
 	}

@@ -2,7 +2,6 @@ package token
 
 import (
 	"strconv"
-	"unicode"
 )
 
 // Token is the set of lexical tokens of the macro language
@@ -165,7 +164,7 @@ func (tok Token) String() string {
 }
 
 func (tok Token) MarshalJSON() ([]byte, error) {
-	return []byte(strconv.QuoteToGraphic(TokenName(tok).String())), nil
+	return []byte(strconv.QuoteToGraphic(Name(tok).String())), nil
 }
 
 // 是否是操作符
@@ -232,12 +231,12 @@ var tokenName = [...]string{
 	WARNING:           "WARNING",
 }
 
-type TokenName Token
+type Name Token
 type Pos int
 
-func (tok TokenName) String() string {
+func (tok Name) String() string {
 	s := ""
-	if 0 <= tok && tok < TokenName(len(tokens)) {
+	if 0 <= tok && tok < Name(len(tokens)) {
 		s = tokenName[tok]
 	}
 	if s == "" {
@@ -255,30 +254,14 @@ func init() {
 	}
 }
 
-// 是否是关键字
-func IsKeyword(name string) bool {
-	_, ok := keywords[name]
-	return ok
-}
-
-// 是否是标识符
-func IsIdentifier(name string) bool {
-	for i, c := range name {
-		if !unicode.IsLetter(c) && c != '_' && (i == 0 || !unicode.IsDigit(c)) {
-			return false
-		}
-	}
-	return name != "" && !IsKeyword(name)
-}
-
 const (
 	LowestPrec = 0  // 最低优先级
 	UnaryPrec  = 11 // 最高优先级
 )
 
 // 优先级
-func (op Token) Precedence() int {
-	switch op {
+func (tok Token) Precedence() int {
+	switch tok {
 	case OR:
 		return 1
 	case AND:

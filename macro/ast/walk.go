@@ -52,7 +52,7 @@ func Walk(v Visitor, node Node) {
 		v.Visit(n)
 		Walk(v, n.Then)
 		Walk(v, n.Else)
-	case *IfNdefStmt:
+	case *IfNoDefStmt:
 		v.Visit(n)
 		Walk(v, n.Then)
 		Walk(v, n.Else)

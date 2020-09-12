@@ -181,7 +181,7 @@ type (
 	}
 
 	// ifndef语句
-	IfNdefStmt struct {
+	IfNoDefStmt struct {
 		From, To token.Pos // 标识符位置
 		Name     *Ident    // 定义的标识符
 		Then     Stmt      // 正确
@@ -336,17 +336,17 @@ func (stmt *IfDefStmt) SetTrueStmt(t Stmt) {
 func (stmt *IfDefStmt) SetFalseStmt(f Stmt) {
 	stmt.Else = f
 }
-func (stmt *IfNdefStmt) Pos() token.Pos { return stmt.From }
-func (stmt *IfNdefStmt) End() token.Pos { return stmt.To }
-func (*IfNdefStmt) stmtNode()           {}
-func (stmt *IfNdefStmt) SetFromTO(from, to token.Pos) {
+func (stmt *IfNoDefStmt) Pos() token.Pos { return stmt.From }
+func (stmt *IfNoDefStmt) End() token.Pos { return stmt.To }
+func (*IfNoDefStmt) stmtNode()           {}
+func (stmt *IfNoDefStmt) SetFromTO(from, to token.Pos) {
 	stmt.From = from
 	stmt.To = to
 }
-func (stmt *IfNdefStmt) SetTrueStmt(t Stmt) {
+func (stmt *IfNoDefStmt) SetTrueStmt(t Stmt) {
 	stmt.Then = t
 }
-func (stmt *IfNdefStmt) SetFalseStmt(f Stmt) {
+func (stmt *IfNoDefStmt) SetFalseStmt(f Stmt) {
 	stmt.Else = f
 }
 func (stmt *ElseIfStmt) Pos() token.Pos { return stmt.From }

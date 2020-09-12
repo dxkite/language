@@ -129,7 +129,7 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 				Name: id,
 			}
 		} else {
-			cond = &ast.IfNdefStmt{
+			cond = &ast.IfNoDefStmt{
 				Name: id,
 			}
 		}

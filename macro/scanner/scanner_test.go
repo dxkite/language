@@ -105,7 +105,7 @@ func TestScanner_Scan(t *testing.T) {
 	}
 
 	errors := ErrorList{
-		&Error{token.Position{37, 2, 29}, "'p' exponent requires hexadecimal mantissa"},
+		&Error{token.Position{37, 2, 28}, "'p' exponent requires hexadecimal mantissa"},
 	}
 
 	litCode := ""
@@ -113,11 +113,11 @@ func TestScanner_Scan(t *testing.T) {
 	for _, tt := range tests {
 		gotOffset, gotTok, gotLit := s.Scan()
 		if gotTok != tt.tok {
-			fmt.Printf("=== offset:%v \ttok:token.%-8s lit:%v\n", gotOffset, token.TokenName(gotTok), strconv.QuoteToGraphic(gotLit))
+			fmt.Printf("=== offset:%v \ttok:token.%-8s lit:%v\n", gotOffset, token.Name(gotTok), strconv.QuoteToGraphic(gotLit))
 			t.Fatalf("Scan() gotTok = %v, want %v", gotTok, tt.tok)
 		}
 		if gotLit != tt.lit {
-			fmt.Printf("=== offset:%v \ttok:token.%-8s lit:%v\n", gotOffset, token.TokenName(gotTok), strconv.QuoteToGraphic(gotLit))
+			fmt.Printf("=== offset:%v \ttok:token.%-8s lit:%v\n", gotOffset, token.Name(gotTok), strconv.QuoteToGraphic(gotLit))
 			t.Fatalf("Scan() gotLit = %v, want %v", gotLit, tt.lit)
 		}
 		litCode += gotLit
@@ -137,7 +137,7 @@ func TestTokenName(t *testing.T) {
 	s.Init(code)
 	for {
 		gotOffset, gotTok, gotLit := s.Scan()
-		fmt.Printf("=== offset:%v \ttok:token.%-8v lit:%v\n", gotOffset, token.TokenName(gotTok), strconv.QuoteToGraphic(gotLit))
+		fmt.Printf("=== offset:%v \ttok:token.%-8v lit:%v\n", gotOffset, token.Name(gotTok), strconv.QuoteToGraphic(gotLit))
 		if gotTok == token.EOF || gotTok == token.ILLEGAL {
 			fmt.Print("\n")
 			break
@@ -152,7 +152,7 @@ func TestTokenName(t *testing.T) {
 	s.Init(code)
 	for {
 		gotOffset, gotTok, gotLit := s.Scan()
-		fmt.Printf("{%v,token.%v,%v},", gotOffset, token.TokenName(gotTok), strconv.QuoteToGraphic(gotLit))
+		fmt.Printf("{%v,token.%v,%v},", gotOffset, token.Name(gotTok), strconv.QuoteToGraphic(gotLit))
 		if gotTok == token.NEWLINE {
 			fmt.Print("\n")
 		}
