@@ -81,9 +81,9 @@ type (
 
 	// 值定义
 	ValDefineStmt struct {
-		From, To token.Pos     // 标识符位置
-		Name     *Ident        // 定义的标识符
-		Body     MacroLitArray // 定义的语句
+		From, To token.Pos      // 标识符位置
+		Name     *Ident         // 定义的标识符
+		Body     *MacroLitArray // 定义的语句
 	}
 
 	// 取消定义指令
@@ -94,12 +94,12 @@ type (
 
 	// 函数定义
 	FuncDefineStmt struct {
-		From, To  token.Pos     // 标识符位置
-		Name      *Ident        // 定义的标识符
-		LParam    token.Pos     // (
-		IdentList []*Ident      // 定义的参数
-		RParam    token.Pos     // )
-		Body      MacroLitArray // 定义的语句
+		From, To  token.Pos      // 标识符位置
+		Name      *Ident         // 定义的标识符
+		LParam    token.Pos      // (
+		IdentList []*Ident       // 定义的参数
+		RParam    token.Pos      // )
+		Body      *MacroLitArray // 定义的语句
 	}
 
 	// 文件包含语句
@@ -111,11 +111,11 @@ type (
 
 	// 宏调用
 	MacroCallExpr struct {
-		From, To  token.Pos     // 标识符位置
-		Name      *Ident        // 定义的标识符
-		LParen    token.Pos     // (
-		ParamList MacroLitArray // 调用的参数列表
-		RParen    token.Pos     // )
+		From, To  token.Pos      // 标识符位置
+		Name      *Ident         // 定义的标识符
+		LParen    token.Pos      // (
+		ParamList *MacroLitArray // 调用的参数列表
+		RParen    token.Pos      // )
 	}
 
 	// 括号表达式
@@ -400,6 +400,6 @@ func (t *MacroLitArray) Append(liter MacroLiter) {
 	*t = append(*t, liter)
 }
 
-func (MacroLitArray) exprNode() {}
-func (MacroLitArray) litNode()  {}
-func (MacroLitArray) stmtNode() {}
+func (*MacroLitArray) exprNode() {}
+func (*MacroLitArray) litNode()  {}
+func (*MacroLitArray) stmtNode() {}

@@ -352,8 +352,8 @@ errExit:
 // 解析宏函数定义体
 // macro_body =
 //    < text_line / macro_literal > .
-func (p *Parser) parseMacroFuncBody() (node ast.MacroLitArray) {
-	node = ast.MacroLitArray{}
+func (p *Parser) parseMacroFuncBody() (node *ast.MacroLitArray) {
+	node = &ast.MacroLitArray{}
 	for !isMacroEnd(p.tok) {
 		// 解析
 		if TokenIn(p.tok, token.IDENT, token.FLOAT, token.INT, token.SHARP) || p.tok.IsKeyword() {
@@ -366,11 +366,11 @@ func (p *Parser) parseMacroFuncBody() (node ast.MacroLitArray) {
 }
 
 // 解析宏定义体
-func (p *Parser) parseMacroTextBody() (node ast.MacroLitArray) {
-	node = ast.MacroLitArray{}
+func (p *Parser) parseMacroTextBody() (node *ast.MacroLitArray) {
+	node = &ast.MacroLitArray{}
 	for !isMacroEnd(p.tok) {
 		// 解析
-		if TokenIn(p.tok, token.IDENT, token.FLOAT, token.INT) || p.tok.IsKeyword() {
+		if isIdent(p.tok) {
 			node.Append(p.parseMacroTermExpr())
 		} else {
 			node.Append(p.parseText())
@@ -380,8 +380,8 @@ func (p *Parser) parseMacroTextBody() (node ast.MacroLitArray) {
 }
 
 // 解析文本语句
-func (p *Parser) parseTextStmt() (node ast.MacroLitArray) {
-	node = ast.MacroLitArray{}
+func (p *Parser) parseTextStmt() (node *ast.MacroLitArray) {
+	node = &ast.MacroLitArray{}
 	for TokenNotIn(p.tok, token.EOF, token.MACRO) {
 		// 解析
 		if TokenIn(p.tok, token.IDENT) || p.tok.IsKeyword() {
@@ -507,8 +507,8 @@ func (p *Parser) tryParenPair(inMacro bool) bool {
 // 找到调用参数
 // macro_argument =
 //    macro_param_lit  <  "," macro_param_lit  >  .
-func (p *Parser) parseMacroArgument(inMacro bool) (node ast.MacroLitArray) {
-	node = ast.MacroLitArray{}
+func (p *Parser) parseMacroArgument(inMacro bool) (node *ast.MacroLitArray) {
+	node = &ast.MacroLitArray{}
 	for TokenNotIn(p.tok, token.RPAREN) && !isMacroArgEnd(inMacro, p.tok) {
 		lit := p.parseMacroArgumentLit(inMacro)
 		node.Append(lit)
@@ -523,13 +523,13 @@ func (p *Parser) parseMacroArgument(inMacro bool) (node ast.MacroLitArray) {
 // macro_param_lit =
 //    < macro_item > .
 func (p *Parser) parseMacroArgumentLit(inMacro bool) (node ast.MacroLiter) {
-	list := ast.MacroLitArray{}
+	list := &ast.MacroLitArray{}
 	for TokenNotIn(p.tok, token.COMMA, token.RPAREN) && !isMacroArgEnd(inMacro, p.tok) {
 		lit := p.parseMacroArgumentLitItem(inMacro)
 		list.Append(lit)
 	}
-	if len(list) == 1 {
-		return list[0]
+	if len(*list) == 1 {
+		return (*list)[0]
 	}
 	return nilIfEmpty(list)
 }
@@ -894,8 +894,8 @@ func Parse(src []byte) (ast.Node, scanner.ErrorList) {
 	return p.root, p.ErrorList()
 }
 
-func nilIfEmpty(array ast.MacroLitArray) ast.MacroLitArray {
-	if len(array) > 0 {
+func nilIfEmpty(array *ast.MacroLitArray) *ast.MacroLitArray {
+	if len(*array) > 0 {
 		return array
 	}
 	return nil

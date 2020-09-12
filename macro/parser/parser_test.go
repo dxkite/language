@@ -122,11 +122,11 @@ func TestParse(t *testing.T) {
 						Offset: 8,
 						Name:   "A",
 					},
-					Body: ast.MacroLitArray{
-						&ast.LitExpr{
+					Body: &ast.MacroLitArray{
+						&ast.Text{
 							Offset: 10,
 							Kind:   token.INT,
-							Value:  "123",
+							Text:   "123",
 						},
 						&ast.Text{
 							Offset: 13,
@@ -150,21 +150,21 @@ func TestParse(t *testing.T) {
 						Offset: 26,
 						Name:   "B",
 					},
-					Body: ast.MacroLitArray{
-						&ast.LitExpr{
+					Body: &ast.MacroLitArray{
+						&ast.Text{
 							Offset: 28,
 							Kind:   token.INT,
-							Value:  "123",
+							Text:   "123",
 						},
 						&ast.Text{
 							Offset: 31,
 							Kind:   token.SHARP,
 							Text:   "#",
 						},
-						&ast.LitExpr{
+						&ast.Text{
 							Offset: 32,
 							Kind:   token.INT,
-							Value:  "123",
+							Text:   "123",
 						},
 					},
 				},
@@ -174,11 +174,11 @@ func TestParse(t *testing.T) {
 						Offset: 44,
 						Name:   "C",
 					},
-					Body: ast.MacroLitArray{
-						&ast.LitExpr{
+					Body: &ast.MacroLitArray{
+						&ast.Text{
 							Offset: 46,
 							Kind:   token.INT,
-							Value:  "123",
+							Text:   "123",
 						},
 						&ast.Text{
 							Offset: 49,
@@ -203,11 +203,11 @@ func TestParse(t *testing.T) {
 						Offset: 8,
 						Name:   "A",
 					},
-					Body: ast.MacroLitArray{
-						&ast.LitExpr{
+					Body: &ast.MacroLitArray{
+						&ast.Text{
 							Offset: 10,
 							Kind:   token.INT,
-							Value:  "123",
+							Text:   "123",
 						},
 						&ast.Text{
 							Offset: 13,
@@ -242,7 +242,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 32,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.Ident{
 							Offset: 34,
 							Name:   "x",
@@ -285,7 +285,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 14,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.BinaryExpr{
 							X: &ast.Ident{
 								Offset: 16,
@@ -317,7 +317,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 35,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.Ident{
 							Offset: 37,
 							Name:   "x",
@@ -355,7 +355,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 18,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.BinaryExpr{
 							X: &ast.Ident{
 								Offset: 20,
@@ -387,7 +387,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 43,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.BinaryExpr{
 							X: &ast.Ident{
 								Offset: 45,
@@ -432,7 +432,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 24,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.BinaryExpr{
 							X: &ast.Ident{
 								Offset: 26,
@@ -477,7 +477,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 24,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.MacroCallExpr{
 							From: 26, To: 30,
 							Name: &ast.Ident{
@@ -485,7 +485,7 @@ func TestParse(t *testing.T) {
 								Name:   "C",
 							},
 							LParen: 27,
-							ParamList: ast.MacroLitArray{
+							ParamList: &ast.MacroLitArray{
 								&ast.Ident{
 									Offset: 28,
 									Name:   "x",
@@ -537,7 +537,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 24,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.MacroCallExpr{
 							From: 26, To: 35,
 							Name: &ast.Ident{
@@ -545,8 +545,8 @@ func TestParse(t *testing.T) {
 								Name:   "C",
 							},
 							LParen: 27,
-							ParamList: ast.MacroLitArray{
-								ast.MacroLitArray{
+							ParamList: &ast.MacroLitArray{
+								&ast.MacroLitArray{
 									&ast.Ident{
 										Offset: 29,
 										Name:   "x",
@@ -608,7 +608,7 @@ func TestParse(t *testing.T) {
 						},
 					},
 					RParam: 24,
-					Body: ast.MacroLitArray{
+					Body: &ast.MacroLitArray{
 						&ast.MacroCallExpr{
 							From: 26, To: 45,
 							Name: &ast.Ident{
@@ -616,8 +616,8 @@ func TestParse(t *testing.T) {
 								Name:   "C",
 							},
 							LParen: 27,
-							ParamList: ast.MacroLitArray{
-								ast.MacroLitArray{
+							ParamList: &ast.MacroLitArray{
+								&ast.MacroLitArray{
 									&ast.MacroCallExpr{
 										From: 28, To: 32,
 										Name: &ast.Ident{
@@ -625,7 +625,7 @@ func TestParse(t *testing.T) {
 											Name:   "D",
 										},
 										LParen: 29,
-										ParamList: ast.MacroLitArray{
+										ParamList: &ast.MacroLitArray{
 											&ast.Ident{
 												Offset: 30,
 												Name:   "x",
@@ -644,7 +644,7 @@ func TestParse(t *testing.T) {
 										Text:   "123",
 									},
 								},
-								ast.MacroLitArray{
+								&ast.MacroLitArray{
 									&ast.MacroCallExpr{
 										From: 37, To: 40,
 										Name: &ast.Ident{
@@ -661,7 +661,7 @@ func TestParse(t *testing.T) {
 											Name:   "F",
 										},
 										LParen: 41,
-										ParamList: ast.MacroLitArray{
+										ParamList: &ast.MacroLitArray{
 											&ast.Ident{
 												Offset: 42,
 												Name:   "g",

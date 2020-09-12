@@ -32,8 +32,8 @@ func Walk(v Visitor, node Node) {
 	case *MacroCallExpr:
 		v.Visit(n)
 		Walk(v, n.ParamList)
-	case MacroLitArray:
-		for _, item := range n {
+	case *MacroLitArray:
+		for _, item := range *n {
 			Walk(v, item)
 		}
 	case *LitExpr:
