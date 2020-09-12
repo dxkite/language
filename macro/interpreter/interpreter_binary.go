@@ -121,6 +121,34 @@ func evalBinary(x, y interface{}, tok token.Token) interface{} {
 				return fx >= fy
 			}
 		}
+	case token.EQL:
+		if ixo {
+			if iyo {
+				return ix == iy
+			} else {
+				return float64(ix) == fy
+			}
+		} else {
+			if iyo {
+				return fx == float64(iy)
+			} else {
+				return fx == fy
+			}
+		}
+	case token.NEQ:
+		if ixo {
+			if iyo {
+				return ix != iy
+			} else {
+				return float64(ix) != fy
+			}
+		} else {
+			if iyo {
+				return fx != float64(iy)
+			} else {
+				return fx != fy
+			}
+		}
 	case token.REM:
 		if ixo {
 			if iyo {
@@ -231,34 +259,6 @@ func evalBinary(x, y interface{}, tok token.Token) interface{} {
 				return (fx > 0) || (iy > 0)
 			} else {
 				return (fx > 0) || (fy > 0)
-			}
-		}
-	case token.EQL:
-		if ixo {
-			if iyo {
-				return (ix > 0) == (iy > 0)
-			} else {
-				return (ix > 0) == (fy > 0)
-			}
-		} else {
-			if iyo {
-				return (fx > 0) == (iy > 0)
-			} else {
-				return (fx > 0) == (fy > 0)
-			}
-		}
-	case token.NEQ:
-		if ixo {
-			if iyo {
-				return (ix > 0) != (iy > 0)
-			} else {
-				return (ix > 0) != (fy > 0)
-			}
-		} else {
-			if iyo {
-				return (fx > 0) != (iy > 0)
-			} else {
-				return (fx > 0) != (fy > 0)
 			}
 		}
 	}
