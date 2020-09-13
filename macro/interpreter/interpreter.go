@@ -15,7 +15,7 @@ type interpreter struct {
 	// 已经定义的宏
 	Val map[string]string
 	// 已经定义的函数
-	Func map[string]ast.FuncDefineStmt
+	Func map[string]*ast.FuncDefineStmt
 	// 位置信息
 	pos token.FilePos
 	// 运行后的源码
@@ -27,7 +27,7 @@ func (it *interpreter) Eval(node ast.Node, name string, pos token.FilePos) []byt
 	it.Val = map[string]string{
 		"__FILE__": strconv.QuoteToGraphic(name),
 	}
-	it.Func = map[string]ast.FuncDefineStmt{}
+	it.Func = map[string]*ast.FuncDefineStmt{}
 	it.src = &bytes.Buffer{}
 	it.pos = pos
 	it.evalStmt(node)
@@ -42,11 +42,13 @@ func (it *interpreter) evalStmt(node ast.Node) {
 			it.evalStmt(sub)
 		}
 	case *ast.MacroLitArray:
-		it.src.WriteString(it.parseLitArray(n, false))
+		it.src.WriteString(it.extractLitArray(n, it.Val))
 	case *ast.Ident:
 		it.src.WriteString(it.evalIdent(n))
 	case *ast.ValDefineStmt:
 		it.evalDefineVal(n)
+	case *ast.FuncDefineStmt:
+		it.evalDefineFunc(n)
 	}
 }
 
@@ -86,7 +88,19 @@ func (it *interpreter) evalDefineVal(stmt *ast.ValDefineStmt) {
 	if _, ok := it.Val[n]; ok || it.isInnerDefine(n) {
 		it.errorf(stmt.Pos(), "warning: %s redefined", n)
 	}
-	it.Val[n] = it.parseLitArray(stmt.Body, true)
+	it.Val[n] = it.extractLitArray(stmt.Body, it.Val)
+	f := it.pos.CreatePosition(stmt.From).Line
+	t := it.pos.CreatePosition(stmt.To).Line
+	it.src.WriteString(strings.Repeat("\n", t-f+1))
+}
+
+// 定义函数
+func (it *interpreter) evalDefineFunc(stmt *ast.FuncDefineStmt) {
+	n := stmt.Name.Name
+	if _, ok := it.Val[n]; ok || it.isInnerDefine(n) {
+		it.errorf(stmt.Pos(), "warning: %s redefined", n)
+	}
+	it.Func[n] = stmt
 	f := it.pos.CreatePosition(stmt.From).Line
 	t := it.pos.CreatePosition(stmt.To).Line
 	it.src.WriteString(strings.Repeat("\n", t-f+1))
@@ -103,50 +117,220 @@ func (it interpreter) isInnerDefine(name string) bool {
 	return false
 }
 
-// 解析列表
-func (it interpreter) parseLitArray(array *ast.MacroLitArray, empty bool) string {
+// 展开列表
+func (it interpreter) parseLitArray(array *ast.MacroLitArray, extra map[string]string) string {
 	t := ""
 	for _, v := range *array {
-		t += it.parseLitItem(v, empty)
+		t += it.parseLitItem(v, extra)
 	}
 	return t
 }
 
-func (it interpreter) parseLitItem(v ast.Expr, empty bool) string {
+// 解析参数调用
+func (it interpreter) parseLitItem(v ast.Expr, params map[string]string) string {
 	switch vv := v.(type) {
 	case *ast.Text:
 		if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
 			return vv.Text
-		} else if vv.Kind == token.BACKSLASH_NEWLINE && !empty {
-			return "\n"
 		}
 	case *ast.MacroCallExpr:
-		return it.evalCall(vv)
+		return it.parseCallToString(vv, params)
 	case *ast.Ident:
-		return it.evalIdent(vv)
+		return vv.Name
+	case *ast.MacroLitArray:
+		return it.parseLitArray(vv, params)
+	default:
+		it.errorf(v.Pos(), "unknown expr %v", v)
 	}
 	return ""
+}
+
+// 展开列表
+func (it interpreter) extractLitArray(array *ast.MacroLitArray, extra map[string]string) string {
+	t := ""
+	for _, v := range *array {
+		t += it.extractLitItem(v, extra)
+	}
+	return t
+}
+
+// 展开参数调用
+func (it interpreter) extractLitItem(v ast.Expr, params map[string]string) string {
+	switch vv := v.(type) {
+	case *ast.Text:
+		if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
+			return vv.Text
+		}
+	case *ast.MacroCallExpr:
+		return it.evalCallInner(vv, params)
+	case *ast.Ident:
+		if params != nil {
+			if v, ok := params[vv.Name]; ok {
+				return v
+			}
+		}
+		return it.evalIdent(vv)
+	case *ast.MacroLitArray:
+		return it.extractLitArray(vv, params)
+	default:
+		it.errorf(v.Pos(), "unknown expr %v", v)
+	}
+	return ""
+}
+
+// 执行函数
+func (it interpreter) evalCall(expr *ast.MacroCallExpr) string {
+	return it.evalCallInner(expr, nil)
 }
 
 // 执行函数表达式
-func (it interpreter) evalCall(expr *ast.MacroCallExpr) string {
+func (it interpreter) evalCallInner(expr *ast.MacroCallExpr, extra map[string]string) string {
+	if fun, ok := it.Func[expr.Name.Name]; ok {
+		r := len(fun.IdentList)
+		p := len(*expr.ParamList)
+		if r != p {
+			it.errorf(expr.Pos(), "expected params %d got %d", r, p)
+			goto exit
+		}
+		params := map[string]ast.MacroLiter{}
+		for i := range fun.IdentList {
+			params[fun.IdentList[i].Name] = (*expr.ParamList)[i]
+		}
+		return it.parseFuncBody(fun.Body, params, extra)
+	}
+exit:
+	return it.parseCallToString(expr, extra)
+}
+
+// 解析列表
+func (it interpreter) parseFuncBody(array *ast.MacroLitArray, params map[string]ast.MacroLiter, extra map[string]string) string {
+	t := ""
+	for _, v := range *array {
+		t += it.parseFuncBodyItem(v, params, extra)
+	}
+	return t
+}
+
+// 生成调用函数体
+func (it interpreter) parseFuncBodyItem(v ast.Expr, params map[string]ast.MacroLiter, extra map[string]string) string {
+	switch vv := v.(type) {
+	case *ast.Text:
+		if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
+			return vv.Text
+		}
+	case *ast.MacroCallExpr:
+		return it.evalCallInner(buildCallExpr(vv, it.extractCallParamList(params, extra)), nil)
+	case *ast.Ident:
+		if v, ok := params[vv.Name]; ok {
+			return it.extractCallParamItem(v, extra)
+		}
+		return it.evalIdent(vv)
+	case *ast.UnaryExpr:
+		if v, ok := it.parseMacroParam(vv.X, params, "'#' is not followed by a macro parameter"); ok {
+			return strconv.QuoteToGraphic(v)
+		}
+	case *ast.BinaryExpr:
+		x, _ := it.parseMacroParam(vv.X, params, "'##' x must be a macro parameter")
+		y, _ := it.parseMacroParam(vv.Y, params, "'##' y must be a macro parameter")
+		return x + y
+	}
 	return ""
 }
 
-// 解析函数参数
-func (it interpreter) parseCallParamList(list *ast.MacroLitArray) []string {
-	params := []string{}
-	for _, item := range *list {
-		p := ""
-		switch t := item.(type) {
-		case *ast.MacroLitArray:
-			p = it.parseLitArray(t, true)
-		default:
-			p = it.parseLitItem(t, true)
+// 展开参数宏
+func (it interpreter) extractMacroParam(v ast.Expr, params map[string]ast.MacroLiter, extra map[string]string, msg string) (string, bool) {
+	if x, ok := v.(*ast.Ident); ok {
+		if v, ok := params[x.Name]; ok {
+			return strings.TrimSpace(it.extractLitItem(v, extra)), true
 		}
-		params = append(params, p)
+	}
+	it.errorf(v.Pos(), msg)
+	return "", false
+}
+
+// 解析参数宏
+func (it interpreter) parseMacroParam(v ast.Expr, params map[string]ast.MacroLiter, msg string) (string, bool) {
+	if x, ok := v.(*ast.Ident); ok {
+		if vv, ok := params[x.Name]; ok {
+			return strings.TrimSpace(it.parseLitItem(vv, nil)), true
+		}
+	}
+	it.errorf(v.Pos(), msg)
+	return "", false
+}
+
+// 未定义函数
+func (it interpreter) parseCallToString(expr *ast.MacroCallExpr, extra map[string]string) string {
+	s := expr.Name.Name
+	s += strings.Repeat(" ", int(expr.LParen-expr.Name.End()))
+	s += "("
+	s += strings.Join(it.parseCallParamList(*expr.ParamList, extra), ",")
+	s += ")"
+	return s
+}
+
+// 应用函数参数
+func (it interpreter) parseCallParamList(list []ast.MacroLiter, extra map[string]string) []string {
+	params := []string{}
+	for _, item := range list {
+		params = append(params, it.extractCallParamItem(item, extra))
 	}
 	return params
+}
+
+// 展开函数参数
+func (it interpreter) extractCallParamList(list map[string]ast.MacroLiter, extra map[string]string) map[string]string {
+	params := map[string]string{}
+	for name, item := range list {
+		params[name] = strings.TrimSpace(it.extractCallParamItem(item, extra))
+	}
+	return params
+}
+
+// 创建新调用
+func buildCallExpr(c *ast.MacroCallExpr, params map[string]string) *ast.MacroCallExpr {
+	cc := &ast.MacroCallExpr{
+		From: c.From,
+		To:   c.To,
+		Name: &ast.Ident{
+			Offset: c.Name.Offset,
+			Name:   c.Name.Name,
+		},
+		LParen:    c.LParen,
+		ParamList: &ast.MacroLitArray{},
+		RParen:    c.RParen,
+	}
+	*cc.ParamList = append(*cc.ParamList, *c.ParamList...)
+	cc.ParamList = bindParamList(cc.ParamList, c.ParamList, params)
+	return cc
+}
+
+// 绑定当前环境参数到调用参数
+func bindParamList(list, from *ast.MacroLitArray, params map[string]string) *ast.MacroLitArray {
+	for i, v := range *from {
+		if vv, ok := v.(*ast.Ident); ok {
+			if x, ok := params[vv.Name]; ok {
+				(*list)[i] = &ast.Text{
+					Offset: vv.Offset,
+					Kind:   token.TEXT,
+					Text:   x,
+				}
+			}
+		} else if vv, ok := v.(*ast.MacroLitArray); ok {
+			(*list)[i] = bindParamList(vv, from, params)
+		}
+	}
+	return list
+}
+
+// 解开函数参数
+func (it interpreter) extractCallParamItem(item ast.MacroLiter, extra map[string]string) string {
+	switch t := item.(type) {
+	case *ast.MacroLitArray:
+		return it.extractLitArray(t, extra)
+	default:
+		return it.extractLitItem(t, extra)
+	}
 }
 
 // 二元运算
@@ -310,12 +494,6 @@ func (it interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 		} else {
 			it.errorf(expr.X.Pos(), "'defined' is not followed by a ident")
 			return uint8(0)
-		}
-	case token.MACRO: // #ident
-		if id, ok := expr.X.(*ast.Ident); ok {
-			return strconv.QuoteToGraphic(it.evalIdent(id))
-		} else {
-			it.errorf(expr.X.Pos(), "'#' is not followed by a macro parameter")
 		}
 	}
 	it.errorf(expr.X.Pos(), "unexpected value %v in unary expr", expr)
