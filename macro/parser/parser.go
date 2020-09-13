@@ -12,10 +12,9 @@ type Parser struct {
 	scanner *scanner.Scanner  // 扫描器
 	errors  scanner.ErrorList // 错误列表
 	// 下一个Token
-	pos  token.Pos   // Token位置
-	tok  token.Token // Token
-	lit  string      // 内容
-	root ast.Stmt    // 根节点
+	pos token.Pos   // Token位置
+	tok token.Token // Token
+	lit string      // 内容
 }
 
 func (p *Parser) Init(src []byte) {
@@ -25,12 +24,13 @@ func (p *Parser) Init(src []byte) {
 	p.next()
 }
 
+// 解析宏语句
 func (p *Parser) Parse() ast.Node {
-	p.root = p.parseStmts()
-	return p.root
+	return p.ParseStmts()
 }
 
-func (p *Parser) parseStmts() ast.Stmt {
+// 解析语句
+func (p *Parser) ParseStmts() ast.Stmt {
 	block := &ast.BlockStmt{}
 	for p.tok != token.EOF {
 		var node ast.Stmt
@@ -114,7 +114,7 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 	var cond ast.CondStmt
 	if tok == token.IF {
 		cond = &ast.IfStmt{
-			X: p.parseExpr(),
+			X: p.ParseExpr(),
 		}
 	} else {
 		p.next()
@@ -145,7 +145,7 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 		p.skipWhitespace()
 		p.next() // elseif
 		eif := &ast.ElseIfStmt{
-			X: p.parseExpr(),
+			X: p.ParseExpr(),
 		}
 		p.scanToMacroEnd(true)
 		tt := p.parseBodyStmts()
@@ -579,14 +579,13 @@ func (p *Parser) parseIf() ast.Stmt {
 	return node
 }
 
-// ------------ start expr ----------------- //
-// 解析表达式
-// expr =
-// 	(numeric__expr)
-func (p *Parser) parseExpr() (expr ast.Expr) {
+// 解析宏表达式
+func (p *Parser) ParseExpr() (expr ast.Expr) {
 	return p.parseExprPrecedence(token.LowestPrec)
 }
 
+// 解析表达式
+// 优先级运算解析
 func (p *Parser) parseExprPrecedence(prec int) (expr ast.Expr) {
 	p.skipWhitespace()
 	expr = p.parseOpExpr(prec + 1)
@@ -654,7 +653,7 @@ func (p *Parser) parseTermExpr() (expr ast.Expr) {
 	switch p.tok {
 	case token.LPAREN:
 		lp, _, _ := p.expected(token.LPAREN)
-		expr = p.parseExpr()
+		expr = p.ParseExpr()
 		rp, _, _ := p.expected(token.RPAREN)
 		return &ast.ParenExpr{
 			Lparen: lp,
@@ -883,20 +882,25 @@ func (p *Parser) clone() *Parser {
 
 // 回复状态
 func (p *Parser) reset(state *Parser) {
-	root := p.root
 	errs := p.errors
 	src := p.scanner.GetSrc()
 	*p = *state
-	p.root = root
 	p.errors = errs
 	p.scanner.SetSrc(src)
 }
 
+// 解析宏
 func Parse(src []byte) (ast.Node, scanner.ErrorList) {
 	p := &Parser{}
 	p.Init(src)
-	p.Parse()
-	return p.root, p.ErrorList()
+	return p.Parse(), p.ErrorList()
+}
+
+// 解析表达式
+func ParseExpr(src []byte) (ast.Expr, scanner.ErrorList) {
+	p := &Parser{}
+	p.Init(src)
+	return p.ParseExpr(), p.ErrorList()
 }
 
 func nilIfEmpty(array *ast.MacroLitArray) *ast.MacroLitArray {

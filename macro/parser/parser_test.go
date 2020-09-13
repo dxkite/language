@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func TestParse(t *testing.T) {
+func TestParseSimple(t *testing.T) {
 	tests := []struct {
 		name string
 		src  []byte
@@ -580,7 +580,8 @@ func TestParse(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			"parse define call nested",
 			[]byte("#define A \n#define B(x,y) C(D(x) 123,E()F(g)))x##y"),
 			&ast.BlockStmt{
@@ -799,10 +800,10 @@ func Test_parser_parseLiteralExpr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{}
 			p.Init([]byte(tt.code))
-			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+			if gotExpr := p.ParseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
-				t.Errorf("parseExpr() = %v, want %v", string(gotS), string(wantS))
+				t.Errorf("ParseExpr() = %v, want %v", string(gotS), string(wantS))
 			}
 		})
 	}
@@ -872,10 +873,10 @@ func Test_parser_parseUnaryExpr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{}
 			p.Init([]byte(tt.code))
-			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+			if gotExpr := p.ParseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
-				t.Errorf("parseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
+				t.Errorf("ParseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
 			}
 		})
 	}
@@ -930,12 +931,16 @@ func Test_parser_parseExpr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &Parser{}
-			p.Init([]byte(tt.code))
-			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+			if gotExpr, errs := ParseExpr([]byte(tt.code)); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+				for _, err := range errs {
+					fmt.Println(err)
+				}
+				if len(errs) > 0 {
+					t.Error(errs)
+				}
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
-				t.Errorf("parseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
+				t.Errorf("ParseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
 			}
 		})
 	}
@@ -967,7 +972,7 @@ func testFile(name, src string, t *testing.T) {
 	}
 }
 
-func TestParseData(t *testing.T) {
+func TestParse(t *testing.T) {
 	if err := filepath.Walk("testdata/", func(p string, info os.FileInfo, err error) error {
 		ext := filepath.Ext(p)
 		name := filepath.Base(p)
