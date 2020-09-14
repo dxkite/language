@@ -53,8 +53,8 @@ B(awd)
 #undef A` + "#define a \r\r\r\r\n#define b\\\r\r\r\r\n" + "#abc //aaa\r\r\r\r\n")
 
 func TestScanner_Scan(t *testing.T) {
-	s := &Scanner{}
-	s.Init(code)
+	s := &scanner{}
+	s.init(code)
 	tests := []struct {
 		offset int
 		tok    token.Token
@@ -123,7 +123,7 @@ func TestScanner_Scan(t *testing.T) {
 		litCode += gotLit
 	}
 
-	if !reflect.DeepEqual(s.Err, errors) {
+	if !reflect.DeepEqual(s.err, errors) {
 		t.Fatalf("Scan() Error report failed\n")
 	}
 
@@ -132,9 +132,21 @@ func TestScanner_Scan(t *testing.T) {
 	}
 }
 
+func TestNewOffsetScanner(t *testing.T) {
+	s := NewOffsetScanner(code, 100)
+	for {
+		gotOffset, gotTok, gotLit := s.Scan()
+		fmt.Printf("=== offset:%v \ttok:token.%-8v lit:%v\n", gotOffset, token.Name(gotTok), strconv.QuoteToGraphic(gotLit))
+		if gotTok == token.EOF || gotTok == token.ILLEGAL {
+			fmt.Print("\n")
+			break
+		}
+	}
+}
+
 func TestTokenName(t *testing.T) {
-	s := &Scanner{}
-	s.Init(code)
+	s := &scanner{}
+	s.init(code)
 	for {
 		gotOffset, gotTok, gotLit := s.Scan()
 		fmt.Printf("=== offset:%v \ttok:token.%-8v lit:%v\n", gotOffset, token.Name(gotTok), strconv.QuoteToGraphic(gotLit))
@@ -144,12 +156,12 @@ func TestTokenName(t *testing.T) {
 		}
 	}
 
-	s.Err.Sort()
-	for _, err := range s.Err {
+	s.err.Sort()
+	for _, err := range s.err {
 		fmt.Println("error", err)
 	}
 
-	s.Init(code)
+	s.init(code)
 	for {
 		gotOffset, gotTok, gotLit := s.Scan()
 		fmt.Printf("{%v,token.%v,%v},", gotOffset, token.Name(gotTok), strconv.QuoteToGraphic(gotLit))
@@ -162,7 +174,7 @@ func TestTokenName(t *testing.T) {
 		}
 	}
 
-	for _, err := range s.Err {
+	for _, err := range s.err {
 		fmt.Printf("&Error{Position{%d,%d,%d},%s},\n", err.Pos.Offset, err.Pos.Line, err.Pos.Column, strconv.QuoteToGraphic(err.Msg))
 	}
 }

@@ -22,7 +22,7 @@ func Walk(v Visitor, node Node) {
 		}
 	case *ValDefineStmt:
 		v.Visit(n)
-	case *ValUnDefineStmt:
+	case *UnDefineStmt:
 		v.Visit(n)
 	case *FuncDefineStmt:
 		v.Visit(n)

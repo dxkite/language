@@ -37,6 +37,7 @@ func (f *FilePos) Init(src []byte) {
 			line = offset + 1
 		}
 	}
+	lines = append(lines, len(src))
 	f.lines = lines
 	f.size = len(src)
 }

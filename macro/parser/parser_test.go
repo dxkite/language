@@ -62,7 +62,7 @@ func TestParseSimple(t *testing.T) {
 					Kind:   token.ERROR,
 					Cmd:    "# error compile error",
 				},
-				&ast.ValUnDefineStmt{
+				&ast.UnDefineStmt{
 					From: 22, To: 30,
 					Name: &ast.Ident{
 						Offset: 29,
@@ -547,6 +547,11 @@ func TestParseSimple(t *testing.T) {
 							LParen: 27,
 							ParamList: &ast.MacroLitArray{
 								&ast.MacroLitArray{
+									&ast.Text{
+										Offset: 28,
+										Kind:   token.TEXT,
+										Text:   " ",
+									},
 									&ast.Ident{
 										Offset: 29,
 										Name:   "x",
@@ -931,7 +936,7 @@ func Test_parser_parseExpr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotExpr, errs := ParseExpr([]byte(tt.code)); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+			if gotExpr, errs := ParseExpr([]byte(tt.code), 0); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
 				for _, err := range errs {
 					fmt.Println(err)
 				}

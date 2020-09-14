@@ -9,7 +9,7 @@ import (
 )
 
 type Parser struct {
-	scanner *scanner.Scanner  // 扫描器
+	scanner scanner.Scanner   // 扫描器
 	errors  scanner.ErrorList // 错误列表
 	// 下一个Token
 	pos token.Pos   // Token位置
@@ -18,9 +18,14 @@ type Parser struct {
 }
 
 func (p *Parser) Init(src []byte) {
-	p.scanner = &scanner.Scanner{}
+	p.scanner = scanner.NewScanner(src)
 	p.errors = scanner.ErrorList{}
-	p.scanner.Init(src)
+	p.next()
+}
+
+func (p *Parser) InitOffset(src []byte, tok token.Pos) {
+	p.scanner = scanner.NewOffsetScanner(src, tok)
+	p.errors = scanner.ErrorList{}
 	p.next()
 }
 
@@ -44,7 +49,7 @@ func (p *Parser) ParseStmts() ast.Stmt {
 				node = p.parseMacroStmt(from)
 			}
 		} else {
-			node = p.parseTextStmt()
+			node = p.ParseTextStmt()
 		}
 		if node != nil {
 			block.Add(node)
@@ -80,7 +85,7 @@ func (p *Parser) parseBodyStmts() ast.Stmt {
 				node = p.parseMacroStmt(from)
 			}
 		} else {
-			node = p.parseTextStmt()
+			node = p.ParseTextStmt()
 		}
 		if node != nil {
 			block.Add(node)
@@ -114,7 +119,7 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 	var cond ast.CondStmt
 	if tok == token.IF {
 		cond = &ast.IfStmt{
-			X: p.ParseExpr(),
+			X: p.parseIfExpr(),
 		}
 	} else {
 		p.next()
@@ -133,10 +138,10 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 				Name: id,
 			}
 		}
+		p.scanToMacroEnd(true)
 	}
-	node = cond
 
-	p.scanToMacroEnd(true)
+	node = cond
 	cond.SetTrueStmt(p.parseBodyStmts())
 
 	for p.tok == token.MACRO && p.curMacroIs(token.ELSEIF) {
@@ -145,9 +150,8 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 		p.skipWhitespace()
 		p.next() // elseif
 		eif := &ast.ElseIfStmt{
-			X: p.ParseExpr(),
+			X: p.parseIfExpr(),
 		}
-		p.scanToMacroEnd(true)
 		tt := p.parseBodyStmts()
 		eif.SetTrueStmt(tt)
 		eif.SetFromTO(off, p.pos)
@@ -173,6 +177,19 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 	}
 	node.SetFromTO(from, p.pos)
 	return
+}
+
+// 提取表达式，不解析
+func (p *Parser) parseIfExpr() ast.Expr {
+	p.skipWhitespace()
+	from := p.pos
+	to := p.scanToMacroEnd(false)
+	expr := clearBackslash(p.scanner.Lit(from, to))
+	return &ast.Text{
+		Offset: from,
+		Kind:   token.TEXT,
+		Text:   expr,
+	}
 }
 
 // #include <path>
@@ -269,7 +286,7 @@ func (p *Parser) parseUnDefine(from token.Pos) ast.Stmt {
 	}
 	end := p.pos
 	p.scanToMacroEnd(true)
-	return &ast.ValUnDefineStmt{
+	return &ast.UnDefineStmt{
 		From: from,
 		To:   end,
 		Name: id,
@@ -356,7 +373,7 @@ func (p *Parser) parseMacroFuncBody() (node *ast.MacroLitArray) {
 	node = &ast.MacroLitArray{}
 	for !isMacroEnd(p.tok) {
 		// 解析
-		if TokenIn(p.tok, token.IDENT, token.FLOAT, token.INT, token.SHARP) || p.tok.IsKeyword() {
+		if TokenIn(p.tok, token.IDENT, token.FLOAT, token.INT, token.SHARP) || isIdent(p.tok) {
 			node.Append(p.parseMacroExpr())
 		} else {
 			node.Append(p.parseText())
@@ -380,7 +397,7 @@ func (p *Parser) parseMacroTextBody() (node *ast.MacroLitArray) {
 }
 
 // 解析文本语句
-func (p *Parser) parseTextStmt() (node *ast.MacroLitArray) {
+func (p *Parser) ParseTextStmt() (node *ast.MacroLitArray) {
 	node = &ast.MacroLitArray{}
 	for TokenNotIn(p.tok, token.EOF, token.MACRO) {
 		// 解析
@@ -423,7 +440,7 @@ func (p *Parser) parseMacroTermExpr() (node ast.MacroLiter) {
 		}
 		p.next()
 		return lit
-	} else if p.tok == token.IDENT || p.tok.IsKeyword() {
+	} else if isIdent(p.tok) {
 		return p.parseIdentExpr()
 	}
 	return p.parseMacroUnaryExpr()
@@ -539,8 +556,7 @@ func (p *Parser) parseMacroArgumentLit(inMacro bool) (node ast.MacroLiter) {
 //    / macro_call_expr
 //    / "text not , " .
 func (p *Parser) parseMacroArgumentLitItem(inMacro bool) (node ast.MacroLiter) {
-	if _, ok := p.tryNextNotEmpty(token.IDENT); ok {
-		p.skipWhitespace()
+	if isIdent(p.tok) {
 		return p.parseMacroLitExpr(inMacro)
 	}
 	return p.parseText()
@@ -716,7 +732,7 @@ func (p *Parser) expectedIdent() (pos token.Pos, tok token.Token, lit string) {
 
 // 是否为标识符
 func isIdent(tok token.Token) bool {
-	return tok == token.IDENT || tok.IsKeyword()
+	return tok == token.IDENT || (tok.IsKeyword() && tok != token.DEFINED)
 }
 
 func (p *Parser) expected(typ ...token.Token) (pos token.Pos, tok token.Token, lit string) {
@@ -851,19 +867,19 @@ func (p *Parser) nextIs(tok token.Token) bool {
 
 // 位置信息
 func (p *Parser) FilePos() token.FilePos {
-	return p.scanner.PosInfo
+	return p.scanner.GetFilePos()
 }
 
 func (p *Parser) ErrorList() scanner.ErrorList {
 	err := scanner.ErrorList{}
 	err.Merge(p.errors)
-	err.Merge(p.scanner.Err)
+	err.Merge(p.scanner.GetErr())
 	err.Sort()
 	return err
 }
 
 func (p *Parser) error(pos token.Pos, msg string) {
-	p.errors.Add(p.scanner.PosInfo.CreatePosition(pos), msg)
+	p.errors.Add(p.scanner.GetFilePos().CreatePosition(pos), msg)
 }
 
 func (p *Parser) errorf(pos token.Pos, format string, args ...interface{}) {
@@ -897,10 +913,16 @@ func Parse(src []byte) (ast.Node, scanner.ErrorList) {
 }
 
 // 解析表达式
-func ParseExpr(src []byte) (ast.Expr, scanner.ErrorList) {
+func ParseExpr(src []byte, off token.Pos) (ast.Expr, scanner.ErrorList) {
 	p := &Parser{}
-	p.Init(src)
+	p.InitOffset(src, off)
 	return p.ParseExpr(), p.ErrorList()
+}
+
+func ParseSubTextStmt(src []byte, off token.Pos) (*ast.MacroLitArray, scanner.ErrorList) {
+	p := &Parser{}
+	p.InitOffset(src, off)
+	return p.ParseTextStmt(), p.ErrorList()
 }
 
 func nilIfEmpty(array *ast.MacroLitArray) *ast.MacroLitArray {

@@ -8,31 +8,41 @@ import (
 	"unicode/utf8"
 )
 
+type Scanner interface {
+	Scan() (offset token.Pos, tok token.Token, lit string)
+	Lit(start, stop token.Pos) string
+	CloneWithoutSrc() Scanner
+	GetSrc() []byte
+	SetSrc(src []byte)
+	GetFilePos() token.FilePos
+	GetErr() ErrorList
+}
+
 // 词法扫描
-type Scanner struct {
+type scanner struct {
 	src         []byte // source
 	ch          rune   // current character
 	offset      int    // character offset
 	rdOffset    int    // reading offset (position after current character)
 	isLineStart bool   // line start
 
-	PosInfo token.FilePos // file position
-	Err     ErrorList     // error list
+	posInfo token.FilePos // file position
+	err     ErrorList     // error list
 }
 
-// Init
-func (s *Scanner) Init(src []byte) {
+// init
+func (s *scanner) init(src []byte) {
 	s.src = src
 	s.ch = ' '
 	s.offset = 0
 	s.rdOffset = 0
-	s.Err.Reset()
+	s.err.Reset()
 	s.next()
 	s.isLineStart = true
-	s.PosInfo.Init(src)
+	s.posInfo.Init(src)
 }
 
-func (s *Scanner) next() {
+func (s *scanner) next() {
 	s.isLineStart = false
 	if s.rdOffset < len(s.src) {
 		s.offset = s.rdOffset
@@ -58,7 +68,7 @@ func (s *Scanner) next() {
 	}
 }
 
-func (s *Scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
+func (s *scanner) Scan() (offset token.Pos, tok token.Token, lit string) {
 	offset = token.Pos(s.offset)
 	switch ch := s.ch; {
 	case isLetter(ch):
@@ -269,7 +279,7 @@ func digitVal(ch rune) int {
 }
 
 // scan escape
-func (s *Scanner) scanEscape(quote rune) bool {
+func (s *scanner) scanEscape(quote rune) bool {
 	offs := s.offset
 	var n int
 	var base, max uint32
@@ -319,7 +329,7 @@ func (s *Scanner) scanEscape(quote rune) bool {
 }
 
 // 扫描字符串
-func (s *Scanner) scanString() string {
+func (s *scanner) scanString() string {
 	offs := s.offset
 	s.next()
 	for s.ch > 0 && s.ch != '"' {
@@ -335,7 +345,7 @@ func (s *Scanner) scanString() string {
 }
 
 // 尝试解析字符串
-func (s *Scanner) tryString() bool {
+func (s *scanner) tryString() bool {
 	ss := s.save()
 	defer s.reset(ss)
 	s.next()
@@ -357,12 +367,12 @@ func (s *Scanner) tryString() bool {
 }
 
 // 获取字面量
-func (s *Scanner) Lit(start, stop token.Pos) string {
+func (s *scanner) Lit(start, stop token.Pos) string {
 	return string(s.src[start:stop])
 }
 
 // 扫描单个字符
-func (s *Scanner) scanChar() string {
+func (s *scanner) scanChar() string {
 	offs := s.offset
 	s.next() // '
 	n := 0
@@ -384,7 +394,7 @@ func (s *Scanner) scanChar() string {
 }
 
 // 尝试解析字符
-func (s *Scanner) tryChar() bool {
+func (s *scanner) tryChar() bool {
 	ss := s.save()
 	defer s.reset(ss)
 	s.next()
@@ -408,7 +418,7 @@ func (s *Scanner) tryChar() bool {
 }
 
 // 扫描标识符
-func (s *Scanner) scanIdentifier() string {
+func (s *scanner) scanIdentifier() string {
 	offs := s.offset
 	for isLetter(s.ch) || isDigit(s.ch) {
 		s.next()
@@ -417,7 +427,7 @@ func (s *Scanner) scanIdentifier() string {
 }
 
 // 扫描代码注释
-func (s *Scanner) scanComment() (tok token.Token, lit string) {
+func (s *scanner) scanComment() (tok token.Token, lit string) {
 	offs := s.offset - 1
 	tok = token.COMMENT
 	if s.ch == '/' {
@@ -449,7 +459,7 @@ exit:
 }
 
 // 扫描数字
-func (s *Scanner) scanNumber() (tok token.Token, lit string) {
+func (s *scanner) scanNumber() (tok token.Token, lit string) {
 	offs := s.offset
 	tok = token.INT
 	u := false
@@ -504,7 +514,7 @@ func (s *Scanner) scanNumber() (tok token.Token, lit string) {
 	return
 }
 
-func (s *Scanner) scanNumberBase(base int) {
+func (s *scanner) scanNumberBase(base int) {
 	if base <= 10 {
 		for isDecimal(s.ch) {
 			s.next()
@@ -517,7 +527,7 @@ func (s *Scanner) scanNumberBase(base int) {
 	return
 }
 
-func (s *Scanner) isEndOfText() bool {
+func (s *scanner) isEndOfText() bool {
 	if s.ch < 0 || isLetter(s.ch) || isDecimal(s.ch) || strings.Contains("\\/'\"(),+-*%&|=^~<>!\n\r#", string(s.ch)) {
 		if s.ch == '\\' {
 			return s.tryBackslashNewLine()
@@ -527,7 +537,7 @@ func (s *Scanner) isEndOfText() bool {
 	return false
 }
 
-func (s *Scanner) peek() byte {
+func (s *scanner) peek() byte {
 	if s.rdOffset < len(s.src) {
 		return s.src[s.rdOffset]
 	}
@@ -535,51 +545,61 @@ func (s *Scanner) peek() byte {
 }
 
 // 复制一份，除了代码
-func (s *Scanner) CloneWithoutSrc() *Scanner {
-	return &Scanner{
+func (s *scanner) CloneWithoutSrc() Scanner {
+	return &scanner{
 		ch:          s.ch,
 		offset:      s.offset,
 		rdOffset:    s.rdOffset,
 		isLineStart: s.isLineStart,
-		Err:         s.Err,
-		PosInfo:     s.PosInfo,
+		err:         s.err,
+		posInfo:     s.posInfo,
 	}
 }
 
 // 获取源码
-func (s *Scanner) GetSrc() []byte {
+func (s *scanner) GetSrc() []byte {
 	return s.src
 }
 
-func (s *Scanner) SetSrc(src []byte) {
+// 获取文件位置信息
+func (s *scanner) GetFilePos() token.FilePos {
+	return s.posInfo
+}
+
+//
+func (s *scanner) GetErr() ErrorList {
+	return s.err
+}
+
+func (s *scanner) SetSrc(src []byte) {
 	s.src = src
 }
 
-func (s *Scanner) save() *Scanner {
-	return &Scanner{
+func (s *scanner) save() *scanner {
+	return &scanner{
 		ch:          s.ch,
 		offset:      s.offset,
 		rdOffset:    s.rdOffset,
 		isLineStart: s.isLineStart,
-		Err:         s.Err,
+		err:         s.err,
 	}
 }
 
-func (s *Scanner) reset(state *Scanner) {
+func (s *scanner) reset(state *scanner) {
 	src := s.src
-	pos := s.PosInfo
+	pos := s.posInfo
 	*s = *state
 	s.src = src
-	s.PosInfo = pos
+	s.posInfo = pos
 }
 
-func (s *Scanner) skipWhitespace() {
+func (s *scanner) skipWhitespace() {
 	for s.ch == ' ' || s.ch == '\t' || s.ch == '\r' {
 		s.next()
 	}
 }
 
-func (s *Scanner) tryBackslashNewLine() bool {
+func (s *scanner) tryBackslashNewLine() bool {
 	ss := s.save()
 	defer s.reset(ss)
 	ok := false
@@ -597,7 +617,7 @@ func (s *Scanner) tryBackslashNewLine() bool {
 	return ok
 }
 
-func (s *Scanner) scanNewLine() {
+func (s *scanner) scanNewLine() {
 	for s.ch == '\r' {
 		s.next()
 	}
@@ -606,11 +626,49 @@ func (s *Scanner) scanNewLine() {
 	}
 }
 
-func (s *Scanner) error(offs int, msg string) {
-	p := s.PosInfo.CreatePosition(token.Pos(offs))
-	s.Err.Add(p, msg)
+func (s *scanner) error(offs int, msg string) {
+	p := s.posInfo.CreatePosition(token.Pos(offs))
+	s.err.Add(p, msg)
 }
 
-func (s *Scanner) errorf(offs int, format string, args ...interface{}) {
+func (s *scanner) errorf(offs int, format string, args ...interface{}) {
 	s.error(offs, fmt.Sprintf(format, args...))
+}
+
+func NewScanner(src []byte) Scanner {
+	s := &scanner{}
+	s.init(src)
+	return s
+}
+
+func NewOffsetScanner(src []byte, pos token.Pos) Scanner {
+	s := &offsetScanner{}
+	s.off = pos
+	s.init(src)
+	return s
+}
+
+type offsetScanner struct {
+	scanner
+	off token.Pos // 子表达式
+}
+
+func (s *offsetScanner) Scan() (offset token.Pos, tok token.Token, lit string) {
+	offset, tok, lit = s.scanner.Scan()
+	offset += s.off
+	return
+}
+
+func (s *offsetScanner) CloneWithoutSrc() Scanner {
+	return &offsetScanner{
+		scanner: scanner{
+			ch:          s.ch,
+			offset:      s.offset,
+			rdOffset:    s.rdOffset,
+			isLineStart: s.isLineStart,
+			err:         s.err,
+			posInfo:     s.posInfo,
+		},
+		off: s.off,
+	}
 }
