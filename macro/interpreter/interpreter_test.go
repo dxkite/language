@@ -12,72 +12,6 @@ import (
 	"testing"
 )
 
-//func Test_interpreter_evalLitExpr(t *testing.T) {
-//	it := interpreter{}
-//	i := it.evalLitExpr(&ast.LitExpr{
-//		Offset: 0,
-//		Kind:   token.INT,
-//		Value:  "0x123ABCDE",
-//	})
-//	if i != int64(0x123ABCDE) {
-//		t.Error("error parse token.INT 0x123ABCEE")
-//	}
-//	f := it.evalLitExpr(&ast.LitExpr{
-//		Offset: 0,
-//		Kind:   token.FLOAT,
-//		Value:  "0x123ABCEEp10",
-//	})
-//	if f != 0x123ABCEEp10 {
-//		t.Error("error parse token.FLOAT 0x123ABCEE")
-//	}
-//}
-
-//
-//func TestGenBinaryExpr(t *testing.T) {
-//	tf := []token.Token{
-//		token.ADD,
-//		token.MUL,
-//		token.SUB,
-//		token.QUO,
-//		token.LSS, // <
-//		token.GTR, // >
-//		token.LEQ, // <=
-//		token.GEQ, // >=
-//		token.EQL, // ==
-//		token.NEQ, // !=
-//	}
-//	//ti := []token.Token{
-//	//	token.REM, // %
-//	//	token.AND, // &
-//	//	token.OR,  // |
-//	//	token.XOR, // ^
-//	//	token.SHL, // <<
-//	//	token.SHR, // >>
-//	//}
-//	//tb := []token.Token{
-//	//	token.LAND, // &&
-//	//	token.LOR,  // ||
-//	//}
-//	ftpl := `case %s:
-//		return xx %s yy
-//	`
-//	for _, tok := range tf {
-//		tn := "token." + token.Name(tok).String()
-//		op := tok.String()
-//		fmt.Printf(ftpl, tn, op)
-//	}
-//	//for _, tok := range ti {
-//	//	tn := "token." + token.Name(tok).String()
-//	//	op := tok.String()
-//	//	fmt.Printf(itpl, tn, op, op, op, op)
-//	//}
-//	//for _, tok := range tb {
-//	//	tn := "token." + token.Name(tok).String()
-//	//	op := tok.String()
-//	//	fmt.Printf(btpl, tn, op, op, op, op)
-//	//}
-//}
-
 func exists(p string) bool {
 	_, err := os.Stat(p)
 	if err != nil {
@@ -89,7 +23,7 @@ func exists(p string) bool {
 	return true
 }
 
-func testFile(name, src string, t *testing.T) {
+func testFile(name, src, ext string, t *testing.T) {
 	code, err := ioutil.ReadFile(src)
 	if err != nil {
 		t.Error(err)
@@ -107,7 +41,9 @@ func testFile(name, src string, t *testing.T) {
 	it := interpreter{}
 	it.Eval(stmts, name, p.FilePos())
 	pp := path.Join(".", src+".txt")
-	if exists(pp) {
+	// .c 为正常测试
+	// .h 调试中
+	if exists(pp) && ext == ".c" {
 		txt, err := ioutil.ReadFile(pp)
 		if err != nil {
 			t.Error(err)
@@ -126,9 +62,9 @@ func TestEval(t *testing.T) {
 	if err := filepath.Walk("testdata/", func(p string, info os.FileInfo, err error) error {
 		ext := filepath.Ext(p)
 		name := filepath.Base(p)
-		if ext == ".c" {
+		if ext == ".c" || ext == ".h" {
 			t.Run(p, func(t *testing.T) {
-				testFile(name, p, t)
+				testFile(name, p, ext, t)
 			})
 		}
 		return nil

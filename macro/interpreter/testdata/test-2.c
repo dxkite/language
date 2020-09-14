@@ -1,6 +1,6 @@
 #define ABC "<ABC>"
 #define EEE(x) "<[[" x "]]>"
-#define BB(b) #b EEE(b)
+#define BB(b) #b EEE(b) "line<"__LINE__">"
 #define y  "<YYYY>"
 #define E(x,y) #x #y ABC BB(y) y
 #define EE(x,y) x##y x
