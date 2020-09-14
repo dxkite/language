@@ -41,9 +41,9 @@ func (it *interpreter) evalStmt(node ast.Node) {
 			it.evalStmt(sub)
 		}
 	case *ast.MacroLitArray:
-		it.src.WriteString(it.extractMacroLine(n, -1))
+		it.src.WriteString(it.extractMacroLine(n, token.NoPos))
 	case *ast.Ident:
-		it.src.WriteString(it.extractIdent(n, -1))
+		it.src.WriteString(it.extractIdent(n, token.NoPos))
 	case *ast.ValDefineStmt:
 		it.evalDefineVal(n)
 	case *ast.FuncDefineStmt:
@@ -136,7 +136,7 @@ func (it interpreter) extractMacroLine(stmt interface{}, pos token.Pos) string {
 		return v
 	case *ast.MacroLitArray:
 		for _, v := range *v {
-			if pos >= 0 {
+			if pos != token.NoPos {
 				t += it.extractMacroItem(v, pos)
 			} else {
 				t += it.extractMacroItem(v, v.Pos())
@@ -185,7 +185,7 @@ func (it interpreter) extractIdent(id *ast.Ident, pos token.Pos) string {
 			return id.Name
 		}
 		if vv, ok := v.(*ast.ValDefineStmt); ok {
-			if pos >= 0 {
+			if pos != token.NoPos {
 				return it.extractMacroLine(vv.Body, pos)
 			}
 			return it.extractMacroLine(vv.Body, id.Pos())
@@ -195,7 +195,7 @@ func (it interpreter) extractIdent(id *ast.Ident, pos token.Pos) string {
 		}
 	}
 	if id.Name == "__LINE__" {
-		if pos >= 0 {
+		if pos != token.NoPos {
 			return strconv.Itoa(it.pos.CreatePosition(pos).Line)
 		}
 		return strconv.Itoa(it.pos.CreatePosition(id.Pos()).Line)

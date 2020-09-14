@@ -234,6 +234,8 @@ var tokenName = [...]string{
 type Name Token
 type Pos int
 
+const NoPos Pos = -1
+
 func (tok Name) String() string {
 	s := ""
 	if 0 <= tok && tok < Name(len(tokens)) {
