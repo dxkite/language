@@ -1,0 +1,35 @@
+
+
+
+
+
+
+"B(10 A) is not 30" <line:7>
+
+
+
+
+
+line < 10 <line:13>
+
+"V is" 15
+
+'a' << 1.1 <line:17>
+
+
++10 and B is defined <line:20>
+
+<line:22>
+
+
+
+
+
+
+100 = 100 <line:29>
+
+<line:31>
+
+line(33)
+"test-3.c" 34
+100+10+35

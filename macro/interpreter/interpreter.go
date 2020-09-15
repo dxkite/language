@@ -48,10 +48,10 @@ func (it *Interpreter) evalStmt(node ast.Node) {
 		it.evalUnDefineStmt(n)
 	case *ast.FuncDefineStmt:
 		it.evalDefineFunc(n)
-		//case *ast.IfStmt:
-		//	it.evalIf(n)
-		//case *ast.ElseIfStmt:
-		//	it.evalElseIf(n)
+	case *ast.IfStmt:
+		it.evalIf(n)
+	case *ast.ElseIfStmt:
+		it.evalElseIf(n)
 	}
 }
 
@@ -103,21 +103,6 @@ func (it *Interpreter) writePlaceholder(node ast.Node) {
 	t := it.pos.CreatePosition(node.End()).Line
 	it.src.WriteString(strings.Repeat("\n", t-f+1))
 }
-
-//// #if
-//func (it *Interpreter) evalIf(stmt *ast.IfStmt) {
-//	v := it.evalIfBoolExpr(stmt.X)
-//	// #if
-//	it.writePlaceholder(stmt.X)
-//	it.evalCondition(v, stmt.Then, stmt.Else)
-//	it.src.WriteString("\n") // #endif
-//}
-//
-//// #elif
-//func (it *Interpreter) evalElseIf(stmt *ast.ElseIfStmt) {
-//	v := it.evalIfBoolExpr(stmt.X)
-//	it.evalCondition(v, stmt.Then, stmt.Else)
-//}
 
 // 展开宏标识符
 // 展开的位置
@@ -547,346 +532,360 @@ func (it Interpreter) extractMacroItem(v ast.MacroLiter, pos token.Pos, outer ma
 //	}
 //}
 
-//func (it *Interpreter) evalIfBoolExpr(expr ast.Expr) bool {
-//	t, _ := expr.(*ast.Text)
-//	e, err := parser.ParseSubTextStmt([]byte(t.Text), t.Pos())
-//	if len(err) > 0 {
-//		it.errorf(expr.Pos(), "unexpected if expr %v", t)
-//	}
-//	ee := it.extractMacroLine(e, e.Pos())
-//	return it.evalExpr(ee, e.Pos())
-//}
-//
-//func (it *Interpreter) evalCondition(v bool, ts, fs ast.Stmt) {
-//	if v {
-//		it.evalStmt(ts)
-//		if fs != nil {
-//			it.writePlaceholder(fs)
-//		}
-//	} else if fs != nil {
-//		it.writePlaceholder(ts)
-//		it.evalStmt(fs)
-//	}
-//}
-//
-//
-//// 二元运算
-//func (it Interpreter) evalBinaryExpr(expr *ast.BinaryExpr) interface{} {
-//	x := it.evalValue(expr.X)
-//	y := it.evalValue(expr.Y)
-//	tx := typeOf(x)
-//	ty := typeOf(y)
-//	t := maxNumberType(tx, ty)
-//	switch expr.Op {
-//	case token.ADD, token.SUB, token.MUL, token.QUO,
-//		token.GEQ, token.GTR, token.LSS, token.LEQ, token.EQL, token.NEQ,
-//		token.LAND, token.LOR:
-//		return it.evalOpCast(x, y, t, expr.Op)
-//	case token.SHR, token.SHL, token.REM,
-//		token.AND, token.OR:
-//		return it.evalOpInt(x, y, expr.X, expr.Y, tx, ty, expr.Op)
-//	default:
-//		it.errorf(expr.Pos(), "unknown operator %s", expr.Op)
-//	}
-//	return uint8(0)
-//}
-//
-//func maxNumberType(tx, ty token.Token) token.Token {
-//	if tx == token.FLOAT || ty == token.FLOAT {
-//		return token.FLOAT
-//	}
-//	if tx == token.CHAR || ty == token.CHAR {
-//		return token.CHAR
-//	}
-//	return token.INT
-//}
-//
-//func typeOf(x interface{}) token.Token {
-//	_, xf := x.(float64)
-//	if xf {
-//		return token.FLOAT
-//	}
-//	_, ux := x.(uint8)
-//	if ux {
-//		return token.CHAR
-//	}
-//	return token.INT
-//}
-//
-//// 运行表达式
-//func (it Interpreter) evalExpr(expr string, pos token.Pos) bool {
-//	exp, errs := parser.ParseExpr([]byte(expr), pos)
-//	if len(errs) > 0 {
-//		it.errorf(pos, "error parse expr %s", expr)
-//	}
-//	switch v := it.evalValue(exp).(type) {
-//	case bool:
-//		return v
-//	case uint8:
-//		return v > 0
-//	case int32:
-//		return v > 0
-//	case float64:
-//		return v > 0
-//	default:
-//		return false
-//	}
-//}
-//
-//// 解析表达式
-//// 返回表达式最后的值(数值/标识符/字符串)
-//// 解析宏/宏函数 得到展开的宏
-//// 把展开的宏作为表达式解析并返回表达式的值
-//func (it Interpreter) evalValue(expr interface{}) interface{} {
-//	switch xx := expr.(type) {
-//	case uint8, int32, float64:
-//		return xx
-//	case *ast.Ident:
-//		return it.evalIdent(xx)
-//	case *ast.LitExpr:
-//		switch xx.Kind {
-//		case token.CHAR:
-//			return it.expectedChar(xx)
-//		case token.INT:
-//			return it.intValue(xx)
-//		case token.FLOAT:
-//			return it.floatValue(xx)
-//		}
-//	case ast.Expr:
-//		switch xx := xx.(type) {
-//		case *ast.ParenExpr:
-//			return it.evalValue(xx.X)
-//		case *ast.UnaryExpr:
-//			return it.evalUnaryExpr(xx)
-//		case *ast.BinaryExpr:
-//			return it.evalBinaryExpr(xx)
-//		case *ast.MacroCallExpr:
-//			return it.evalCall(xx)
-//		}
-//		it.errorf(xx.Pos(), "unexpected token %v", xx)
-//	}
-//	return nil
-//}
-//
-//// 解析Ident
-//func (it Interpreter) expectedIdent(expr ast.Expr) *ast.Ident {
-//	switch xx := expr.(type) {
-//	case *ast.Ident:
-//		return xx
-//	case *ast.ParenExpr:
-//		return it.expectedIdent(xx.X)
-//	}
-//	return nil
-//}
-//
-//func (it Interpreter) evalOpInt(x, y interface{}, ex, ey ast.Expr, tx, ty, op token.Token) interface{} {
-//	var yy int32
-//	if _, ok := y.(float64); ty == token.FLOAT && ok {
-//		yy = it.intValue(y)
-//		it.errorf(ey.Pos(), "float in y expression")
-//	} else {
-//		yy = it.intValue(y)
-//	}
-//	if tx == token.FLOAT {
-//		xx := it.intValue(x)
-//		it.errorf(ex.Pos(), "float in x expression")
-//		switch op {
-//		case token.SHL:
-//			return xx << yy
-//		case token.SHR:
-//			return xx >> yy
-//		case token.REM:
-//			return xx % yy
-//		case token.AND:
-//			return xx & yy
-//		case token.OR:
-//			return xx | yy
-//		}
-//	}
-//	if tx == token.INT {
-//		xx := it.intValue(x)
-//		switch op {
-//		case token.SHL:
-//			return xx << yy
-//		case token.SHR:
-//			return xx >> yy
-//		case token.REM:
-//			return xx % yy
-//		case token.AND:
-//			return xx & yy
-//		case token.OR:
-//			return xx | yy
-//		}
-//	}
-//	if tx == token.CHAR {
-//		xx := x.(uint8)
-//		yy := uint8(yy)
-//		switch op {
-//		case token.SHL:
-//			return xx << yy
-//		case token.SHR:
-//			return xx >> yy
-//		case token.REM:
-//			return xx % yy
-//		case token.AND:
-//			return xx & yy
-//		case token.OR:
-//			return xx | yy
-//		}
-//	}
-//	return uint8(0)
-//}
-//
-//// 自动转换成数据量高的类型进行运算
-//func (it Interpreter) evalOpCast(x, y interface{}, t, op token.Token) interface{} {
-//	if t == token.FLOAT {
-//		xx, yy := it.floatValue(x), it.floatValue(y)
-//		switch op {
-//		case token.ADD:
-//			return xx + yy
-//		case token.SUB:
-//			return xx - yy
-//		case token.MUL:
-//			return xx * yy
-//		case token.QUO:
-//			return xx / yy
-//		case token.GTR:
-//			return xx > yy
-//		case token.GEQ:
-//			return xx >= yy
-//		case token.LSS:
-//			return xx < yy
-//		case token.LEQ:
-//			return xx <= yy
-//		case token.EQL:
-//			return xx == yy
-//		case token.NEQ:
-//			return xx != yy
-//		case token.LAND:
-//			return (xx > 0) && (yy > 0)
-//		case token.LOR:
-//			return (xx > 0) && (yy > 0)
-//		}
-//	}
-//	if t == token.INT {
-//		xx, yy := it.intValue(x), it.intValue(y)
-//		switch op {
-//		case token.ADD:
-//			return xx + yy
-//		case token.SUB:
-//			return xx - yy
-//		case token.MUL:
-//			return xx * yy
-//		case token.QUO:
-//			return xx / yy
-//		case token.GTR:
-//			return xx > yy
-//		case token.GEQ:
-//			return xx >= yy
-//		case token.LSS:
-//			return xx < yy
-//		case token.LEQ:
-//			return xx <= yy
-//		case token.EQL:
-//			return xx == yy
-//		case token.NEQ:
-//			return xx != yy
-//		case token.LAND:
-//			return (xx > 0) && (yy > 0)
-//		case token.LOR:
-//			return (xx > 0) && (yy > 0)
-//		}
-//	}
-//	if t == token.CHAR {
-//		xx, _ := x.(uint8)
-//		yy, _ := y.(uint8)
-//		switch op {
-//		case token.ADD:
-//			return xx + yy
-//		case token.SUB:
-//			return xx - yy
-//		case token.MUL:
-//			return xx * yy
-//		case token.QUO:
-//			return xx / yy
-//		case token.GTR:
-//			return xx > yy
-//		case token.GEQ:
-//			return xx >= yy
-//		case token.LSS:
-//			return xx < yy
-//		case token.LEQ:
-//			return xx <= yy
-//		case token.EQL:
-//			return xx == yy
-//		case token.NEQ:
-//			return xx != yy
-//		case token.LAND:
-//			return (xx > 0) && (yy > 0)
-//		case token.LOR:
-//			return (xx > 0) && (yy > 0)
-//		}
-//	}
-//	return uint8(0)
-//}
-//
-//// 表达式到整数
-//func (it Interpreter) intValue(value interface{}) int32 {
-//	switch ex := value.(type) {
-//	case *ast.LitExpr:
-//		if ex.Kind == token.INT {
-//			return it.evalInt(ex)
-//		}
-//		if ex.Kind == token.CHAR {
-//			return int32(charValue(ex.Value))
-//		}
-//		if ex.Kind == token.FLOAT {
-//			return int32(it.evalFloat(ex))
-//		}
-//	case float64:
-//		return int32(ex)
-//	case uint8:
-//		return int32(ex)
-//	case int32:
-//		return ex
-//	}
-//	return 0
-//}
-//
-//func (it Interpreter) expectedChar(expr *ast.LitExpr) uint8 {
-//	if expr.Kind != token.CHAR {
-//		it.errorf(expr.Pos(), "unexpected token %v", expr)
-//		return 0
-//	}
-//	c, ok := tryCharValue(expr.Value)
-//	if ok == false {
-//		it.errorf(expr.Pos(), "error char expr %s", expr.Value)
-//	}
-//	return c
-//}
-//
-//// 表达式到浮点数
-//func (it Interpreter) floatValue(value interface{}) float64 {
-//	switch ex := value.(type) {
-//	case *ast.LitExpr:
-//		if ex.Kind == token.INT {
-//			return it.evalFloat(ex)
-//		}
-//		if ex.Kind == token.INT {
-//			return float64(it.evalInt(ex))
-//		}
-//		if ex.Kind == token.CHAR {
-//			return float64(charValue(ex.Value))
-//		}
-//	case float64:
-//		return ex
-//	case uint8:
-//		return float64(ex)
-//	case int32:
-//		return float64(ex)
-//	}
-//	return 0
-//}
+// #if
+func (it *Interpreter) evalIf(stmt *ast.IfStmt) {
+	v := it.evalIfBoolExpr(stmt.X)
+	// #if
+	it.writePlaceholder(stmt.X)
+	it.evalCondition(v, stmt.Then, stmt.Else)
+	it.src.WriteString("\n") // #endif
+}
+
+// #elif
+func (it *Interpreter) evalElseIf(stmt *ast.ElseIfStmt) {
+	v := it.evalIfBoolExpr(stmt.X)
+	it.evalCondition(v, stmt.Then, stmt.Else)
+}
+
+func (it *Interpreter) evalIfBoolExpr(expr ast.Expr) bool {
+	t, _ := expr.(*ast.Text)
+	e, err := parser.ParseTextStmt([]byte(t.Text), t.Pos())
+	if len(err) > 0 {
+		it.errorf(expr.Pos(), "unexpected if expr %v", t)
+	}
+	ee := it.extractMacroLine(e, e.Pos(), nil)
+	return it.evalExpr(ee, e.Pos())
+}
+
+func (it *Interpreter) evalCondition(v bool, ts, fs ast.Stmt) {
+	if v {
+		it.evalStmt(ts)
+		if fs != nil {
+			it.writePlaceholder(fs)
+		}
+	} else if fs != nil {
+		it.writePlaceholder(ts)
+		it.evalStmt(fs)
+	}
+}
+
+// 二元运算
+func (it Interpreter) evalBinaryExpr(expr *ast.BinaryExpr) interface{} {
+	x := it.evalValue(expr.X)
+	y := it.evalValue(expr.Y)
+	tx := typeOf(x)
+	ty := typeOf(y)
+	t := maxNumberType(tx, ty)
+	switch expr.Op {
+	case token.ADD, token.SUB, token.MUL, token.QUO,
+		token.GEQ, token.GTR, token.LSS, token.LEQ, token.EQL, token.NEQ,
+		token.LAND, token.LOR:
+		return it.evalOpCast(x, y, t, expr.Op)
+	case token.SHR, token.SHL, token.REM,
+		token.AND, token.OR:
+		return it.evalOpInt(x, y, expr.X, expr.Y, tx, ty, expr.Op)
+	default:
+		it.errorf(expr.Pos(), "unknown operator %s", expr.Op)
+	}
+	return uint8(0)
+}
+
+func maxNumberType(tx, ty token.Token) token.Token {
+	if tx == token.FLOAT || ty == token.FLOAT {
+		return token.FLOAT
+	}
+	if tx == token.CHAR || ty == token.CHAR {
+		return token.CHAR
+	}
+	return token.INT
+}
+
+func typeOf(x interface{}) token.Token {
+	_, xf := x.(float64)
+	if xf {
+		return token.FLOAT
+	}
+	_, ux := x.(uint8)
+	if ux {
+		return token.CHAR
+	}
+	return token.INT
+}
+
+// 运行表达式
+func (it Interpreter) evalExpr(expr string, pos token.Pos) bool {
+	exp, errs := parser.ParseExpr([]byte(expr), pos)
+	if len(errs) > 0 {
+		it.errorf(pos, "error parse expr %s", expr)
+	}
+	switch v := it.evalValue(exp).(type) {
+	case bool:
+		return v
+	case uint8:
+		return v > 0
+	case int32:
+		return v > 0
+	case float64:
+		return v > 0
+	default:
+		return false
+	}
+}
+
+// 解析表达式
+// 返回表达式最后的值(数值/标识符/字符串)
+// 解析宏/宏函数 得到展开的宏
+// 把展开的宏作为表达式解析并返回表达式的值
+func (it Interpreter) evalValue(expr interface{}) interface{} {
+	switch xx := expr.(type) {
+	case uint8, int32, float64:
+		return xx
+	case *ast.Ident:
+		return it.evalIdent(xx)
+	case *ast.LitExpr:
+		switch xx.Kind {
+		case token.CHAR:
+			return it.expectedChar(xx)
+		case token.INT:
+			return it.intValue(xx)
+		case token.FLOAT:
+			return it.floatValue(xx)
+		}
+	case ast.Expr:
+		switch xx := xx.(type) {
+		case *ast.ParenExpr:
+			return it.evalValue(xx.X)
+		case *ast.UnaryExpr:
+			return it.evalUnaryExpr(xx)
+		case *ast.BinaryExpr:
+			return it.evalBinaryExpr(xx)
+		case *ast.MacroCallExpr:
+			return it.extractMacroFuncWith(xx.Pos(), xx, nil)
+		}
+		it.errorf(xx.Pos(), "unexpected token %v", xx)
+	}
+	return nil
+}
+
+// 解析Ident
+func (it Interpreter) expectedIdent(expr ast.Expr) *ast.Ident {
+	switch xx := expr.(type) {
+	case *ast.Ident:
+		return xx
+	case *ast.ParenExpr:
+		return it.expectedIdent(xx.X)
+	}
+	return nil
+}
+
+func (it Interpreter) evalOpInt(x, y interface{}, ex, ey ast.Expr, tx, ty, op token.Token) interface{} {
+	var yy int32
+	if _, ok := y.(float64); ty == token.FLOAT && ok {
+		yy = it.intValue(y)
+		it.errorf(ey.Pos(), "float in y expression")
+	} else {
+		yy = it.intValue(y)
+	}
+	if tx == token.FLOAT {
+		xx := it.intValue(x)
+		it.errorf(ex.Pos(), "float in x expression")
+		switch op {
+		case token.SHL:
+			return xx << yy
+		case token.SHR:
+			return xx >> yy
+		case token.REM:
+			return xx % yy
+		case token.AND:
+			return xx & yy
+		case token.OR:
+			return xx | yy
+		}
+	}
+	if tx == token.INT {
+		xx := it.intValue(x)
+		switch op {
+		case token.SHL:
+			return xx << yy
+		case token.SHR:
+			return xx >> yy
+		case token.REM:
+			return xx % yy
+		case token.AND:
+			return xx & yy
+		case token.OR:
+			return xx | yy
+		}
+	}
+	if tx == token.CHAR {
+		xx := x.(uint8)
+		yy := uint8(yy)
+		switch op {
+		case token.SHL:
+			return xx << yy
+		case token.SHR:
+			return xx >> yy
+		case token.REM:
+			return xx % yy
+		case token.AND:
+			return xx & yy
+		case token.OR:
+			return xx | yy
+		}
+	}
+	return uint8(0)
+}
+
+// 自动转换成数据量高的类型进行运算
+func (it Interpreter) evalOpCast(x, y interface{}, t, op token.Token) interface{} {
+	if t == token.FLOAT {
+		xx, yy := it.floatValue(x), it.floatValue(y)
+		switch op {
+		case token.ADD:
+			return xx + yy
+		case token.SUB:
+			return xx - yy
+		case token.MUL:
+			return xx * yy
+		case token.QUO:
+			return xx / yy
+		case token.GTR:
+			return xx > yy
+		case token.GEQ:
+			return xx >= yy
+		case token.LSS:
+			return xx < yy
+		case token.LEQ:
+			return xx <= yy
+		case token.EQL:
+			return xx == yy
+		case token.NEQ:
+			return xx != yy
+		case token.LAND:
+			return (xx > 0) && (yy > 0)
+		case token.LOR:
+			return (xx > 0) && (yy > 0)
+		}
+	}
+	if t == token.INT {
+		xx, yy := it.intValue(x), it.intValue(y)
+		switch op {
+		case token.ADD:
+			return xx + yy
+		case token.SUB:
+			return xx - yy
+		case token.MUL:
+			return xx * yy
+		case token.QUO:
+			return xx / yy
+		case token.GTR:
+			return xx > yy
+		case token.GEQ:
+			return xx >= yy
+		case token.LSS:
+			return xx < yy
+		case token.LEQ:
+			return xx <= yy
+		case token.EQL:
+			return xx == yy
+		case token.NEQ:
+			return xx != yy
+		case token.LAND:
+			return (xx > 0) && (yy > 0)
+		case token.LOR:
+			return (xx > 0) && (yy > 0)
+		}
+	}
+	if t == token.CHAR {
+		xx, _ := x.(uint8)
+		yy, _ := y.(uint8)
+		switch op {
+		case token.ADD:
+			return xx + yy
+		case token.SUB:
+			return xx - yy
+		case token.MUL:
+			return xx * yy
+		case token.QUO:
+			return xx / yy
+		case token.GTR:
+			return xx > yy
+		case token.GEQ:
+			return xx >= yy
+		case token.LSS:
+			return xx < yy
+		case token.LEQ:
+			return xx <= yy
+		case token.EQL:
+			return xx == yy
+		case token.NEQ:
+			return xx != yy
+		case token.LAND:
+			return (xx > 0) && (yy > 0)
+		case token.LOR:
+			return (xx > 0) && (yy > 0)
+		}
+	}
+	return uint8(0)
+}
+
+// 表达式到整数
+func (it Interpreter) intValue(value interface{}) int32 {
+	switch ex := value.(type) {
+	case *ast.LitExpr:
+		if ex.Kind == token.INT {
+			return it.evalInt(ex)
+		}
+		if ex.Kind == token.CHAR {
+			return int32(charValue(ex.Value))
+		}
+		if ex.Kind == token.FLOAT {
+			return int32(it.evalFloat(ex))
+		}
+	case float64:
+		return int32(ex)
+	case uint8:
+		return int32(ex)
+	case int32:
+		return ex
+	}
+	return 0
+}
+
+func (it Interpreter) expectedChar(expr *ast.LitExpr) uint8 {
+	if expr.Kind != token.CHAR {
+		it.errorf(expr.Pos(), "unexpected token %v", expr)
+		return 0
+	}
+	c, ok := tryCharValue(expr.Value)
+	if ok == false {
+		it.errorf(expr.Pos(), "error char expr %s", expr.Value)
+	}
+	return c
+}
+
+// 表达式到浮点数
+func (it Interpreter) floatValue(value interface{}) float64 {
+	switch ex := value.(type) {
+	case *ast.LitExpr:
+		if ex.Kind == token.INT {
+			return it.evalFloat(ex)
+		}
+		if ex.Kind == token.INT {
+			return float64(it.evalInt(ex))
+		}
+		if ex.Kind == token.CHAR {
+			return float64(charValue(ex.Value))
+		}
+	case float64:
+		return ex
+	case uint8:
+		return float64(ex)
+	case int32:
+		return float64(ex)
+	}
+	return 0
+}
 
 // 特殊转义
 var chMap = map[uint8]uint8{
@@ -953,57 +952,56 @@ func digitVal(ch rune) int {
 	return 16
 }
 
-//
-//// 一元运算
-//func (it Interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
-//	switch expr.Op {
-//	case token.NOT: // ~
-//		v := it.expectedValue(it.evalValue(expr))
-//		if vv, ok := v.(uint8); ok {
-//			return ^vv
-//		}
-//		if vv, ok := v.(int32); ok {
-//			return ^vv
-//		}
-//	case token.LNOT: // !
-//		v := it.expectedValue(it.evalValue(expr))
-//		if vv, ok := v.(uint8); ok {
-//			return !(vv > 0)
-//		}
-//		if vv, ok := v.(int32); ok {
-//			return !(vv > 0)
-//		}
-//		if vv, ok := v.(float64); ok {
-//			return !(vv > 0)
-//		}
-//	case token.SUB: // -
-//		v := it.expectedValue(it.evalValue(expr))
-//		if vv, ok := v.(uint8); ok {
-//			return -vv
-//		}
-//		if vv, ok := v.(int32); ok {
-//			return -vv
-//		}
-//		if vv, ok := v.(float64); ok {
-//			return -vv
-//		}
-//	case token.DEFINED: // defined ident
-//		id := it.expectedIdent(expr.X)
-//		if id != nil {
-//			if _, ok := it.Val[id.Name]; ok {
-//				return uint8(1)
-//			}
-//			if _, ok := it.Val[id.Name]; ok {
-//				return uint8(1)
-//			}
-//		} else {
-//			it.errorf(expr.X.Pos(), "'defined' is not followed by a ident %v", expr.X)
-//			return uint8(0)
-//		}
-//	}
-//	it.errorf(expr.X.Pos(), "unexpected value %v in unary expr", expr)
-//	return uint8(0)
-//}
+// 一元运算
+func (it Interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
+	switch expr.Op {
+	case token.NOT: // ~
+		v := it.expectedValue(it.evalValue(expr))
+		if vv, ok := v.(uint8); ok {
+			return ^vv
+		}
+		if vv, ok := v.(int32); ok {
+			return ^vv
+		}
+	case token.LNOT: // !
+		v := it.expectedValue(it.evalValue(expr))
+		if vv, ok := v.(uint8); ok {
+			return !(vv > 0)
+		}
+		if vv, ok := v.(int32); ok {
+			return !(vv > 0)
+		}
+		if vv, ok := v.(float64); ok {
+			return !(vv > 0)
+		}
+	case token.SUB: // -
+		v := it.expectedValue(it.evalValue(expr))
+		if vv, ok := v.(uint8); ok {
+			return -vv
+		}
+		if vv, ok := v.(int32); ok {
+			return -vv
+		}
+		if vv, ok := v.(float64); ok {
+			return -vv
+		}
+	case token.DEFINED: // defined ident
+		id := it.expectedIdent(expr.X)
+		if id != nil {
+			if _, ok := it.Val[id.Name]; ok {
+				return uint8(1)
+			}
+			if _, ok := it.Val[id.Name]; ok {
+				return uint8(1)
+			}
+		} else {
+			it.errorf(expr.X.Pos(), "'defined' is not followed by a ident %v", expr.X)
+			return uint8(0)
+		}
+	}
+	it.errorf(expr.X.Pos(), "unexpected value %v in unary expr", expr)
+	return uint8(0)
+}
 
 //// 展开ID标识符
 //// pos 展开标识符的位置
@@ -1027,54 +1025,59 @@ func digitVal(ch rune) int {
 //	return id.Name
 //}
 //
-//// 获取宏定义值
-//func (it Interpreter) evalIdent(id *ast.Ident) interface{} {
-//	vv := ""
-//	if v, ok := it.Val[id.Name]; ok {
-//		vv = it.extractMacroLine(v, id.Pos())
-//	}
-//	if id.Name == "__LINE__" {
-//		vv = strconv.Itoa(it.pos.CreatePosition(id.Pos()).Line)
-//	}
-//	exp, errs := parser.ParseExpr([]byte(vv), id.Pos())
-//	if len(errs) > 0 {
-//		it.errorf(id.Pos(), "error extract ident expr %s", vv)
-//	}
-//	return it.evalValue(exp)
-//}
-//
-//// 转换表达式到值
-//func (it Interpreter) expectedValue(value interface{}) interface{} {
-//	switch v := value.(type) {
-//	case *ast.LitExpr:
-//		if v.Kind == token.FLOAT {
-//			return it.evalFloat(v)
-//		}
-//		if v.Kind == token.INT {
-//			return it.evalInt(v)
-//		}
-//		if v.Kind == token.CHAR {
-//			return charValue(v.Value)
-//		}
-//	case float64, uint8, int32:
-//		return v
-//	case *ast.Ident:
-//		vv := it.extractIdentPos(v.Pos(), v)
-//		if v, err := strconv.ParseInt(vv, 0, 32); err == nil {
-//			return v
-//		}
-//		if v, err := strconv.ParseFloat(vv, 64); err == nil {
-//			return v
-//		}
-//		if v, ok := tryCharValue(vv); ok {
-//			return v
-//		}
-//		it.errorf(v.Pos(), "unexpected ident value %v", v)
-//	case ast.Expr:
-//		it.errorf(v.Pos(), "unexpected value %v", v)
-//	}
-//	return uint8(0)
-//}
+// 获取宏定义值
+func (it Interpreter) evalIdent(id *ast.Ident) interface{} {
+	vvv := ""
+	if v, ok := it.Val[id.Name]; ok {
+		// 如果是宏定义函数，则返回名字
+		switch vv := v.(type) {
+		case *MacroFuncValue:
+			vvv = id.Name
+		case *MacroLitValue:
+			vvv = vv.Extract(id.Pos(), nil)
+		case MacroString:
+			vvv = vv.Extract(id.Pos(), nil)
+		}
+	}
+	exp, errs := parser.ParseExpr([]byte(vvv), id.Pos())
+	if len(errs) > 0 {
+		it.errorf(id.Pos(), "error extract ident expr %s", vvv)
+	}
+	return it.evalValue(exp)
+}
+
+// 转换表达式到值
+func (it Interpreter) expectedValue(value interface{}) interface{} {
+	switch v := value.(type) {
+	case *ast.LitExpr:
+		if v.Kind == token.FLOAT {
+			return it.evalFloat(v)
+		}
+		if v.Kind == token.INT {
+			return it.evalInt(v)
+		}
+		if v.Kind == token.CHAR {
+			return charValue(v.Value)
+		}
+	case float64, uint8, int32:
+		return v
+	case *ast.Ident:
+		vv := it.extractMacroValue(v.Pos(), v)
+		if v, err := strconv.ParseInt(vv, 0, 32); err == nil {
+			return v
+		}
+		if v, err := strconv.ParseFloat(vv, 64); err == nil {
+			return v
+		}
+		if v, ok := tryCharValue(vv); ok {
+			return v
+		}
+		it.errorf(v.Pos(), "unexpected ident value %v", v)
+	case ast.Expr:
+		it.errorf(v.Pos(), "unexpected value %v", v)
+	}
+	return uint8(0)
+}
 
 // 解析数字
 func (it Interpreter) evalInt(expr *ast.LitExpr) int32 {
