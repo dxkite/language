@@ -16,7 +16,7 @@ func (pos *Position) IsValid() bool { return pos.Offset > 0 }
 
 // 位置打印字符串
 func (pos Position) String() string {
-	return fmt.Sprintf("%d:%d:%d", pos.Offset, pos.Line, pos.Column)
+	return fmt.Sprintf("%d:%d", pos.Line, pos.Column)
 }
 
 // Pos转换成Position

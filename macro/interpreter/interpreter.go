@@ -165,6 +165,9 @@ func (it *Interpreter) macroFuncString(pos token.Pos, expr *ast.MacroCallExpr, o
 // 解析调用未定义宏函数参数
 func (it *Interpreter) macroParamString(pos token.Pos, list *ast.MacroLitArray, outer map[string]ast.MacroLiter) []string {
 	params := []string{}
+	if list == nil {
+		return params
+	}
 	for _, item := range *list {
 		params = append(params, it.macroParamItemString(pos, item, outer))
 	}
@@ -956,7 +959,7 @@ func digitVal(ch rune) int {
 func (it Interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 	switch expr.Op {
 	case token.NOT: // ~
-		v := it.expectedValue(it.evalValue(expr))
+		v := it.expectedValue(it.evalValue(expr.X))
 		if vv, ok := v.(uint8); ok {
 			return ^vv
 		}
@@ -964,7 +967,7 @@ func (it Interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 			return ^vv
 		}
 	case token.LNOT: // !
-		v := it.expectedValue(it.evalValue(expr))
+		v := it.expectedValue(it.evalValue(expr.X))
 		if vv, ok := v.(uint8); ok {
 			return !(vv > 0)
 		}
@@ -975,7 +978,7 @@ func (it Interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 			return !(vv > 0)
 		}
 	case token.SUB: // -
-		v := it.expectedValue(it.evalValue(expr))
+		v := it.expectedValue(it.evalValue(expr.X))
 		if vv, ok := v.(uint8); ok {
 			return -vv
 		}
@@ -991,15 +994,12 @@ func (it Interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 			if _, ok := it.Val[id.Name]; ok {
 				return uint8(1)
 			}
-			if _, ok := it.Val[id.Name]; ok {
-				return uint8(1)
-			}
-		} else {
-			it.errorf(expr.X.Pos(), "'defined' is not followed by a ident %v", expr.X)
 			return uint8(0)
 		}
+		it.errorf(expr.X.Pos(), "'defined' is not followed by a ident %v", expr.X)
+		return uint8(0)
 	}
-	it.errorf(expr.X.Pos(), "unexpected value %v in unary expr", expr)
+	it.errorf(expr.X.Pos(), "unexpected value %v in %s expr", expr.X, expr.Op)
 	return uint8(0)
 }
 
@@ -1098,7 +1098,7 @@ func (it Interpreter) evalFloat(expr *ast.LitExpr) float64 {
 }
 
 func (it Interpreter) error(pos token.Pos, msg string) {
-	fmt.Println("error", pos, msg)
+	fmt.Println("error", it.pos.CreatePosition(pos), msg)
 }
 
 func (it Interpreter) errorf(pos token.Pos, format string, args ...interface{}) {
