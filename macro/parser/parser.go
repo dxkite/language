@@ -919,7 +919,8 @@ func ParseExpr(src []byte, off token.Pos) (ast.Expr, scanner.ErrorList) {
 	return p.ParseExpr(), p.ErrorList()
 }
 
-func ParseSubTextStmt(src []byte, off token.Pos) (*ast.MacroLitArray, scanner.ErrorList) {
+// 解析非宏定义区域文本(普通文本/标识符/调用)
+func ParseTextStmt(src []byte, off token.Pos) (*ast.MacroLitArray, scanner.ErrorList) {
 	p := &Parser{}
 	p.InitOffset(src, off)
 	return p.ParseTextStmt(), p.ErrorList()

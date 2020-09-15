@@ -38,7 +38,7 @@ func testFile(name, src, ext string, t *testing.T) {
 	if len(p.ErrorList()) > 0 {
 		t.Error(p.ErrorList())
 	}
-	it := interpreter{}
+	it := Interpreter{}
 	it.Eval(stmts, name, p.FilePos())
 	pp := path.Join(".", src+".txt")
 	// .c 为正常测试
