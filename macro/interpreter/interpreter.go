@@ -52,6 +52,23 @@ func (it *Interpreter) evalStmt(node ast.Node) {
 		it.evalIf(n)
 	case *ast.ElseIfStmt:
 		it.evalElseIf(n)
+	case *ast.IfDefStmt:
+		it.evalIfDefined(n)
+	case *ast.IfNoDefStmt:
+		it.evalIfNoDefined(n)
+	case *ast.IncludeStmt:
+		fmt.Println("include", n.Path)
+		it.writePlaceholder(n)
+	case *ast.MacroCmdStmt:
+		if n.Kind != token.ERROR {
+			it.writePlaceholder(n)
+		} else {
+			it.error(n.Pos(), n.Cmd)
+		}
+	case *ast.LineStmt:
+		fmt.Println("set line", n.Line)
+	default:
+		fmt.Println("unexpected cmd")
 	}
 }
 
@@ -107,24 +124,37 @@ func (it *Interpreter) writePlaceholder(node ast.Node) {
 // 展开宏标识符
 // 展开的位置
 func (it *Interpreter) extractMacroValue(pos token.Pos, id *ast.Ident) string {
+	if v, ok := it.extractIdent(pos, id); ok {
+		return v
+	}
+	if id.Name == "__LINE__" {
+		if pos == token.NoPos {
+			return strconv.Itoa(it.pos.CreatePosition(id.Pos()).Line)
+		}
+		return strconv.Itoa(it.pos.CreatePosition(pos).Line)
+	}
+	return id.Name
+}
+
+// 展开定义的标识符
+func (it *Interpreter) extractIdent(pos token.Pos, id *ast.Ident) (str string, exist bool) {
 	if pos == token.NoPos {
 		pos = id.Pos()
 	}
 	if v, ok := it.Val[id.Name]; ok {
+		exist = true
 		// 如果是宏定义函数，则返回名字
 		switch vv := v.(type) {
 		case *MacroFuncValue:
-			return id.Name
+			str = id.Name
 		case *MacroLitValue:
-			return vv.Extract(pos, nil)
+			str = vv.Extract(pos, nil)
 		case MacroString:
-			return vv.Extract(pos, nil)
+			str = vv.Extract(pos, nil)
 		}
+		return
 	}
-	if id.Name == "__LINE__" {
-		return strconv.Itoa(it.pos.CreatePosition(pos).Line)
-	}
-	return id.Name
+	return "", false
 }
 
 // 展开宏函数
@@ -241,70 +271,6 @@ func bindParamIdent(v ast.MacroLiter, outer map[string]ast.MacroLiter) ast.Macro
 	return v
 }
 
-// 创建调用
-// 展开调用参数
-//func buildCallExpr(c *ast.MacroCallExpr, pos token.Pos, outer map[string]ast.MacroLiter) *ast.MacroCallExpr {
-//	cc := &ast.MacroCallExpr{
-//		From: c.From,
-//		To:   c.To,
-//		Name: &ast.Ident{
-//			Offset: c.Name.Offset,
-//			Name:   c.Name.Name,
-//		},
-//		LParen:    c.LParen,
-//		ParamList: &ast.MacroLitArray{},
-//		RParen:    c.RParen,
-//	}
-//	*cc.ParamList = make([]ast.MacroLiter, len(*c.ParamList))
-//	cc.ParamList = bindParamList(cc.ParamList, c.ParamList, pos, outer)
-//	return cc
-//}
-
-//
-//// 调用环境
-//type CallEnv struct {
-//	it     *Interpreter
-//	caller *ast.MacroCallExpr // 调用的函数
-//	scope  map[string]string  // 调用的函数的参数
-//}
-//
-//
-//// 创建调用环境
-//// it 解释器
-//// expr 父级调用
-//// params 父级调用参数
-//func NewCallEnv(it *Interpreter, expr *ast.MacroCallExpr, params map[string]string) *CallEnv {
-//	return &CallEnv{
-//		it:     it,
-//		caller: expr,
-//		scope:  params,
-//	}
-//}
-//
-//// 展开调用参数标识符
-//func (e CallEnv) EnvIdent(id *ast.Ident) ast.MacroLiter {
-//	if e.scope == nil {
-//		return id
-//	}
-//	if x, ok := e.scope[id.Name]; ok {
-//		return &ast.Text {
-//			Offset: id.Offset,
-//			Kind:   token.TEXT,
-//			Text:   x,
-//		}
-//	}
-//	return id
-//}
-//
-//// 展开标识符
-//func (e CallEnv) Ident(id *ast.Ident) string {
-//	if e.caller == nil {
-//		return e.it.extractIdent(id, token.NoPos)
-//	}
-//	return e.it.extractIdent(id, e.caller.Pos())
-//}
-//
-//
 // 展开宏列表
 func (it Interpreter) macroValueString(array *ast.MacroLitArray, pos token.Pos, outer map[string]ast.MacroLiter) string {
 	t := ""
@@ -337,6 +303,16 @@ func (it Interpreter) macroValueItemString(v ast.Expr, pos token.Pos, outer map[
 // 展开宏定义行
 // extra 额外的参数
 func (it Interpreter) extractMacroLine(stmt interface{}, pos token.Pos, outer map[string]ast.MacroLiter) string {
+	return it.extractLine(true, stmt, pos, outer)
+}
+
+// 展开参数调用
+func (it Interpreter) extractMacroItem(v ast.MacroLiter, pos token.Pos, outer map[string]ast.MacroLiter) string {
+	return it.extractItem(true, v, pos, outer)
+}
+
+// 展开宏定义行
+func (it Interpreter) extractLine(inMacro bool, stmt interface{}, pos token.Pos, outer map[string]ast.MacroLiter) string {
 	t := ""
 	switch v := stmt.(type) {
 	case string:
@@ -347,14 +323,14 @@ func (it Interpreter) extractMacroLine(stmt interface{}, pos token.Pos, outer ma
 		}
 	case *ast.BlockStmt:
 		for _, v := range *v {
-			t += it.extractMacroLine(v, pos, outer)
+			t += it.extractLine(inMacro, v, pos, outer)
 		}
 	}
 	return t
 }
 
 // 展开参数调用
-func (it Interpreter) extractMacroItem(v ast.MacroLiter, pos token.Pos, outer map[string]ast.MacroLiter) string {
+func (it Interpreter) extractItem(inMacro bool, v ast.MacroLiter, pos token.Pos, outer map[string]ast.MacroLiter) string {
 	switch vv := v.(type) {
 	case *ast.Text:
 		if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
@@ -377,164 +353,6 @@ func (it Interpreter) extractMacroItem(v ast.MacroLiter, pos token.Pos, outer ma
 	return ""
 }
 
-//// 展开ID标识符
-//// id 展开的标识符（含位置）
-//// pos > 0 则表示在标识符内部展开
-//func (it Interpreter) extractIdent(id *ast.Ident, pos token.Pos) string {
-//	if v, ok := it.Val[id.Name]; ok {
-//		// 如果是宏定义函数，则返回名字
-//		if _, ok := v.(*ast.FuncDefineStmt); ok {
-//			return id.Name
-//		}
-//		if vv, ok := v.(*ast.ValDefineStmt); ok {
-//			if pos != token.NoPos {
-//				return it.extractMacroLine(vv.Body, pos)
-//			}
-//			return it.extractMacroLine(vv.Body, id.Pos())
-//		}
-//		if vv, ok := v.(string); ok {
-//			return vv
-//		}
-//	}
-//	if id.Name == "__LINE__" {
-//		if pos != token.NoPos {
-//			return strconv.Itoa(it.pos.CreatePosition(pos).Line)
-//		}
-//		return strconv.Itoa(it.pos.CreatePosition(id.Pos()).Line)
-//	}
-//	return id.Name
-//}
-
-// 执行函数
-//func (it *Interpreter) evalCall(expr *ast.MacroCallExpr) string {
-//	return it.evalCallInner(expr, NewCallEnv(it, nil, nil))
-//}
-//
-//// 执行函数表达式
-//// 宏函数全部展开之后才展开参数中的标识符
-//func (it Interpreter) evalCallInner(expr *ast.MacroCallExpr, caller *CallEnv) string {
-//	if expr.Name.Name == "defined" {
-//		goto exit
-//	}
-//	if v, ok := it.Val[expr.Name.Name]; ok {
-//		fun, ok := v.(*ast.FuncDefineStmt)
-//		if !ok {
-//			goto exit
-//		}
-//		r := len(fun.IdentList)
-//		p := len(*expr.ParamList)
-//		if r != p {
-//			it.errorf(expr.Pos(), "expected params %d got %d", r, p)
-//			goto exit
-//		}
-//		params := map[string]ast.MacroLiter{}
-//		for i := range fun.IdentList {
-//			params[fun.IdentList[i].Name] = (*expr.ParamList)[i]
-//		}
-//		return it.extractFuncBody(expr, fun.Body, params, caller)
-//	}
-//exit:
-//	return it.parseCallToString(expr, caller)
-//}
-//
-//// 展开宏定义函数
-//func (it Interpreter) extractFuncBody(expr *ast.MacroCallExpr, array *ast.MacroLitArray, params map[string]ast.MacroLiter, env *CallEnv) string {
-//	t := ""
-//	for _, v := range *array {
-//		t += it.parseFuncBodyItem(expr, v, params, env)
-//	}
-//	return t
-//}
-//
-//// 生成调用函数体
-//func (it Interpreter) parseFuncBodyItem(expr *ast.MacroCallExpr, v ast.Expr, params map[string]ast.MacroLiter, env *CallEnv) string {
-//	switch vv := v.(type) {
-//	case *ast.Text:
-//		if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
-//			return vv.Text
-//		}
-//	case *ast.MacroCallExpr:
-//		// 不允许递归调用
-//		if vv.Name.Name == expr.Name.Name {
-//			return it.parseCallToString(buildCallExpr(vv, env), env)
-//		}
-//		return it.evalCallInner(buildCallExpr(vv, env), env)
-//	case *ast.Ident:
-//		// 展开宏
-//		if v, ok := params[vv.Name]; ok {
-//			return it.extractCallParamItem(expr, v, env)
-//		}
-//		return it.extractIdentPos(expr.Pos(), vv)
-//	case *ast.UnaryExpr:
-//		if v, ok := it.parseMacroParam(vv.X, params, "'#' is not followed by a macro parameter"); ok {
-//			return strconv.QuoteToGraphic(v)
-//		}
-//	case *ast.BinaryExpr:
-//		x, _ := it.parseMacroParam(vv.X, params, "'##' x must be a macro parameter")
-//		y, _ := it.parseMacroParam(vv.Y, params, "'##' y must be a macro parameter")
-//		return x + y
-//	case *ast.LitExpr:
-//		return vv.Value
-//	default:
-//		it.errorf(v.Pos(), "unknown item %v", v)
-//	}
-//	return ""
-//}
-//
-//// 解析参数宏
-//func (it Interpreter) parseMacroParam(v ast.Expr, params map[string]ast.MacroLiter, msg string) (string, bool) {
-//	if x, ok := v.(*ast.Ident); ok {
-//		if vv, ok := params[x.Name]; ok {
-//			return strings.TrimSpace(it.macroValueItemString(vv, nil)), true
-//		}
-//	}
-//	it.errorf(v.Pos(), msg)
-//	return "", false
-//}
-//
-//// 未定义函数
-//func (it Interpreter) parseCallToString(expr *ast.MacroCallExpr, caller *CallEnv) string {
-//	s := it.extractIdentPos(expr.Pos(), expr.Name)
-//	s += strings.Repeat(" ", int(expr.LParen-expr.Name.End()))
-//	s += "("
-//	if expr.Name.Name != "defined" {
-//		s += strings.Join(it.parseCallParamList(expr, *expr.ParamList, caller), ",")
-//	} else {
-//		s += it.macroValueString(expr.ParamList, nil)
-//	}
-//	s += ")"
-//	return s
-//}
-//
-//// 应用函数参数
-//func (it Interpreter) parseCallParamList(expr *ast.MacroCallExpr, list []ast.MacroLiter, caller *CallEnv) []string {
-//	params := []string{}
-//	for _, item := range list {
-//		params = append(params, it.extractCallParamItem(expr, item, caller))
-//	}
-//	return params
-//}
-//
-//// 展开函数参数
-//func (it Interpreter) extractCallParamList(expr *ast.MacroCallExpr, list map[string]ast.MacroLiter, env *CallEnv) map[string]string {
-//	params := map[string]string{}
-//	for name, item := range list {
-//		params[name] = strings.TrimSpace(it.extractCallParamItem(expr, item, env))
-//	}
-//	return params
-//}
-//
-
-//// 解开函数调用参数
-//func (it Interpreter) extractCallParamItem(expr *ast.MacroCallExpr, item ast.MacroLiter, caller *CallEnv) string {
-//	switch t := item.(type) {
-//	case *ast.MacroLitArray:
-//		return it.extractMacroLine(t, expr.Pos())
-//	default:
-//		return it.extractMacroItem(t, expr.Pos())
-//	}
-//}
-
 // #if
 func (it *Interpreter) evalIf(stmt *ast.IfStmt) {
 	v := it.evalIfBoolExpr(stmt.X)
@@ -548,6 +366,24 @@ func (it *Interpreter) evalIf(stmt *ast.IfStmt) {
 func (it *Interpreter) evalElseIf(stmt *ast.ElseIfStmt) {
 	v := it.evalIfBoolExpr(stmt.X)
 	it.evalCondition(v, stmt.Then, stmt.Else)
+}
+
+// #ifdef
+func (it *Interpreter) evalIfDefined(stmt *ast.IfDefStmt) {
+	v := it.evalDefined(stmt.Name, "#ifdef")
+	// #ifdef
+	it.writePlaceholder(stmt.Name)
+	it.evalCondition(v, stmt.Then, stmt.Else)
+	it.src.WriteString("\n") // #endif
+}
+
+// #ifndef
+func (it *Interpreter) evalIfNoDefined(stmt *ast.IfNoDefStmt) {
+	v := it.evalDefined(stmt.Name, "#ifndef")
+	// #ifdef
+	it.writePlaceholder(stmt.Name)
+	it.evalCondition(!v, stmt.Then, stmt.Else)
+	it.src.WriteString("\n") // #endif
 }
 
 func (it *Interpreter) evalIfBoolExpr(expr ast.Expr) bool {
@@ -989,61 +825,38 @@ func (it Interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 			return -vv
 		}
 	case token.DEFINED: // defined ident
-		id := it.expectedIdent(expr.X)
-		if id != nil {
-			if _, ok := it.Val[id.Name]; ok {
-				return uint8(1)
-			}
-			return uint8(0)
+		if it.evalDefined(expr.X, "defined") {
+			return uint8(1)
 		}
-		it.errorf(expr.X.Pos(), "'defined' is not followed by a ident %v", expr.X)
 		return uint8(0)
 	}
 	it.errorf(expr.X.Pos(), "unexpected value %v in %s expr", expr.X, expr.Op)
 	return uint8(0)
 }
 
-//// 展开ID标识符
-//// pos 展开标识符的位置
-//// id 展开的标识符
-//func (it Interpreter) extractIdentPos(pos token.Pos, id *ast.Ident) string {
-//	if v, ok := it.Val[id.Name]; ok {
-//		// 如果是宏定义函数，则返回名字
-//		if _, ok := v.(*ast.FuncDefineStmt); ok {
-//			return id.Name
-//		}
-//		if vv, ok := v.(*ast.ValDefineStmt); ok {
-//			return it.extractMacroLine(vv.Body, vv.Pos())
-//		}
-//		if vv, ok := v.(string); ok {
-//			return vv
-//		}
-//	}
-//	if id.Name == "__LINE__" {
-//		return strconv.Itoa(it.pos.CreatePosition(pos).Line)
-//	}
-//	return id.Name
-//}
-//
+// 定义指令
+func (it Interpreter) evalDefined(expr ast.Expr, typ string) bool {
+	id := it.expectedIdent(expr)
+	if id != nil {
+		if _, ok := it.Val[id.Name]; ok {
+			return true
+		}
+		return false
+	}
+	it.errorf(expr.Pos(), "'%s' is not followed by a ident %v", typ, expr)
+	return false
+}
+
 // 获取宏定义值
 func (it Interpreter) evalIdent(id *ast.Ident) interface{} {
-	vvv := ""
-	if v, ok := it.Val[id.Name]; ok {
-		// 如果是宏定义函数，则返回名字
-		switch vv := v.(type) {
-		case *MacroFuncValue:
-			vvv = id.Name
-		case *MacroLitValue:
-			vvv = vv.Extract(id.Pos(), nil)
-		case MacroString:
-			vvv = vv.Extract(id.Pos(), nil)
+	if v, ok := it.extractIdent(id.Pos(), id); ok {
+		exp, errs := parser.ParseExpr([]byte(v), id.Pos())
+		if len(errs) > 0 {
+			it.errorf(id.Pos(), "error extract ident expr %s", v)
 		}
+		return it.evalValue(exp)
 	}
-	exp, errs := parser.ParseExpr([]byte(vvv), id.Pos())
-	if len(errs) > 0 {
-		it.errorf(id.Pos(), "error extract ident expr %s", vvv)
-	}
-	return it.evalValue(exp)
+	return uint8(0)
 }
 
 // 转换表达式到值

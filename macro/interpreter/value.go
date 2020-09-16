@@ -27,6 +27,9 @@ type MacroLitValue struct {
 }
 
 func (m *MacroLitValue) Extract(pos token.Pos, outer map[string]ast.MacroLiter) string {
+	if m.stmt.Body == nil {
+		return m.stmt.Name.Name
+	}
 	return m.it.extractMacroLine(m.stmt.Body, pos, outer)
 }
 
@@ -58,6 +61,7 @@ func (m *MacroFuncValue) parseFuncBodyItem(pos token.Pos, v ast.MacroLiter, oute
 		}
 	case *ast.MacroCallExpr:
 		// 不允许递归调用
+		// TODO 递归调用处理
 		if vv.Name.Name == m.stmt.Name.Name {
 			return m.it.macroFuncString(pos, vv, outer)
 		}
