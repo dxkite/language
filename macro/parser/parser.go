@@ -645,7 +645,7 @@ func (p *Parser) parseIf() ast.Stmt {
 }
 
 // 解析宏表达式
-func (p *Parser) ParseExpr() (expr ast.Expr) {
+func (p *Parser) parseExpr() (expr ast.Expr) {
 	return p.parseExprPrecedence(token.LowestPrec)
 }
 
@@ -718,7 +718,7 @@ func (p *Parser) parseTermExpr() (expr ast.Expr) {
 	switch p.tok {
 	case token.LPAREN:
 		lp, _, _ := p.expected(token.LPAREN)
-		expr = p.ParseExpr()
+		expr = p.parseExpr()
 		rp, _, _ := p.expected(token.RPAREN)
 		return &ast.ParenExpr{
 			Lparen: lp,
@@ -978,7 +978,14 @@ func Parse(src []byte) (ast.Node, scanner.ErrorList) {
 func ParseExpr(src []byte, off token.Pos) (ast.Expr, scanner.ErrorList) {
 	p := &Parser{}
 	p.InitOffset(src, off)
-	return p.ParseExpr(), p.ErrorList()
+	return p.parseExpr(), p.ErrorList()
+}
+
+// 解析 body
+func ParseBodyLiter(src []byte, off token.Pos) (ast.MacroLiter, scanner.ErrorList) {
+	p := &Parser{}
+	p.InitOffset(src, off)
+	return p.parseMacroFuncBody(), p.ErrorList()
 }
 
 func nilIfEmpty(array *ast.MacroLitArray) *ast.MacroLitArray {

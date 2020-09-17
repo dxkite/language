@@ -805,10 +805,10 @@ func Test_parser_parseLiteralExpr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{}
 			p.Init([]byte(tt.code))
-			if gotExpr := p.ParseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
-				t.Errorf("ParseExpr() = %v, want %v", string(gotS), string(wantS))
+				t.Errorf("parseExpr() = %v, want %v", string(gotS), string(wantS))
 			}
 		})
 	}
@@ -878,10 +878,10 @@ func Test_parser_parseUnaryExpr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &Parser{}
 			p.Init([]byte(tt.code))
-			if gotExpr := p.ParseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
+			if gotExpr := p.parseExpr(); !reflect.DeepEqual(gotExpr, tt.wantExpr) {
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
-				t.Errorf("ParseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
+				t.Errorf("parseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
 			}
 		})
 	}
@@ -945,7 +945,7 @@ func Test_parser_parseExpr(t *testing.T) {
 				}
 				gotS, _ := json.Marshal(gotExpr)
 				wantS, _ := json.Marshal(tt.wantExpr)
-				t.Errorf("ParseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
+				t.Errorf("parseExpr() = \ngot \t%s\nwant\t%s", string(gotS), string(wantS))
 			}
 		})
 	}

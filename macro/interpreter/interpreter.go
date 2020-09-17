@@ -295,6 +295,44 @@ func (it Interpreter) macroValueItemString(v ast.Expr, env *ExtractEnv) string {
 	return ""
 }
 
+// 转字符串
+func (it Interpreter) litString(v ast.MacroLiter) string {
+	switch vv := v.(type) {
+	case *ast.Text:
+		if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
+			return vv.Text
+		}
+	case *ast.MacroCallExpr:
+		return it.funcLitString(vv)
+	case *ast.Ident:
+		return vv.Name
+	case *ast.MacroLitArray:
+		t := ""
+		for _, v := range *vv {
+			t += it.litString(v)
+		}
+		return t
+	case *ast.LitExpr:
+		return vv.Value
+	default:
+		it.errorf(v.Pos(), "unknown expr %s", reflect.TypeOf(v))
+	}
+	return ""
+}
+
+// 调用未定义宏函数
+func (it *Interpreter) funcLitString(expr *ast.MacroCallExpr) string {
+	s := expr.Name.Name
+	t := []string{}
+	for _, v := range *expr.ParamList {
+		t = append(t, it.litString(v))
+	}
+	s += "("
+	s += strings.Join(t, ",")
+	s += ")"
+	return s
+}
+
 // 展开宏定义行
 func (it Interpreter) extractLine(stmt interface{}, env *ExtractEnv) string {
 	t := ""

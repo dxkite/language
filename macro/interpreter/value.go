@@ -182,10 +182,30 @@ func (m *MacroFuncValue) parseMacroParam(v ast.Expr, env *ExtractEnv, msg string
 	return "", false
 }
 
+func (m *MacroFuncValue) getBinaryParam(v ast.Expr, env *ExtractEnv, msg string) (ast.MacroLiter, bool) {
+	if x, ok := v.(*ast.Ident); ok {
+		if vv, ok := env.Val[x.Name]; ok {
+			_, id := vv.(*ast.Ident)
+			_, le := vv.(*ast.LitExpr)
+			return vv, id || le
+		}
+	}
+	m.it.errorf(v.Pos(), msg)
+	return nil, false
+}
+
 // 解析参数宏
 func (m *MacroFuncValue) extractBinary(v *ast.BinaryExpr, env *ExtractEnv) string {
-	// TODO extract ## operator parameter
-	x, _ := m.parseMacroParam(v.X, env, "'##' x must be a macro parameter")
-	y, _ := m.parseMacroParam(v.Y, env, "'##' y must be a macro parameter")
-	return x + y
+	x, xok := m.getBinaryParam(v.X, env, "'##' x must be a macro parameter")
+	y, yok := m.getBinaryParam(v.Y, env, "'##' y must be a macro parameter")
+	if xok && yok {
+		return m.it.litString(x) + m.it.litString(y)
+	}
+	s := m.it.litString(x) + "##" + m.it.litString(y)
+	stmt, errs := parser.ParseBodyLiter([]byte(s), v.Pos())
+	if len(errs) > 0 {
+		m.it.errorf(v.Pos(), errs.Error())
+		return m.it.extractItem(x, env) + m.it.extractItem(y, env)
+	}
+	return m.parseFuncBodyItem(stmt, env)
 }

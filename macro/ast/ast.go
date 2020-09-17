@@ -122,7 +122,7 @@ type (
 	ParenExpr struct {
 		Lparen token.Pos // "("
 		X      Expr      // 表达式值
-		Rparen token.Pos //  ")"
+		Rparen token.Pos // ")"
 	}
 
 	// 字面量数组
