@@ -387,16 +387,6 @@ func (t MacroLitArray) End() token.Pos {
 }
 
 func (t *MacroLitArray) Append(liter MacroLiter) {
-	//l := len(*t)
-	//if l > 0 {
-	//	ta, okl := liter.(*Text)
-	//	ea, oke := (*t)[l-1].(*Text)
-	//	if okl && oke {
-	//		ea.Append(ta)
-	//		(*t)[l-1] = ea
-	//		return
-	//	}
-	//}
 	*t = append(*t, liter)
 }
 

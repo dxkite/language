@@ -31,11 +31,11 @@ func (p *Parser) InitOffset(src []byte, tok token.Pos) {
 
 // 解析宏语句
 func (p *Parser) Parse() ast.Node {
-	return p.ParseStmts()
+	return p.parseStmts()
 }
 
 // 解析语句
-func (p *Parser) ParseStmts() ast.Stmt {
+func (p *Parser) parseStmts() ast.Stmt {
 	block := &ast.BlockStmt{}
 	for p.tok != token.EOF {
 		var node ast.Stmt
@@ -424,6 +424,9 @@ func (p *Parser) parseMacroFuncBody() (node *ast.MacroLitArray) {
 		// 解析
 		if TokenIn(p.tok, token.IDENT, token.FLOAT, token.INT, token.SHARP) || isIdent(p.tok) {
 			node.Append(p.parseMacroExpr())
+		} else if TokenIn(p.tok, token.DOUBLE_SHARP) {
+			p.errorf(p.pos, "unexpected token %s in macro body", token.DOUBLE_SHARP)
+			p.next()
 		} else {
 			node.Append(p.parseText())
 		}
@@ -437,7 +440,7 @@ func (p *Parser) parseMacroTextBody() (node *ast.MacroLitArray) {
 	for !isMacroEnd(p.tok) {
 		// 解析
 		if isIdent(p.tok) {
-			node.Append(p.parseMacroTermExpr())
+			node.Append(p.parseMacroExpr())
 		} else {
 			node.Append(p.parseText())
 		}
@@ -460,26 +463,8 @@ func (p *Parser) parseTextStmt() (node *ast.MacroLitArray) {
 }
 
 // 解析宏表达式
+// 宏函数体内
 func (p *Parser) parseMacroExpr() (node ast.MacroLiter) {
-	expr := p.parseMacroTermExpr()
-	for p.nextNotEmptyIs(token.DOUBLE_SHARP) {
-		p.skipWhitespace()
-		offs := p.pos
-		p.next()
-		p.skipWhitespace()
-		y := p.parseMacroTermExpr()
-		expr = &ast.BinaryExpr{
-			X:      expr,
-			Offset: offs,
-			Op:     token.DOUBLE_SHARP,
-			Y:      y,
-		}
-	}
-	return expr
-}
-
-// 表达式终结符
-func (p *Parser) parseMacroTermExpr() (node ast.MacroLiter) {
 	pos, tok, name := p.pos, p.tok, p.lit
 	if TokenIn(p.tok, token.FLOAT, token.INT) {
 		lit := &ast.LitExpr{
@@ -490,13 +475,36 @@ func (p *Parser) parseMacroTermExpr() (node ast.MacroLiter) {
 		p.next()
 		return lit
 	} else if isIdent(p.tok) {
-		return p.parseIdentExpr()
+		id := &ast.Ident{
+			Offset: p.pos,
+			Name:   p.lit,
+		}
+		p.next()
+		if p.nextNotEmptyIs(token.DOUBLE_SHARP) {
+			p.skipWhitespace()
+			p.next() //##
+			p.skipWhitespace()
+			pos, _, name := p.expectedIdent()
+			return &ast.BinaryExpr{
+				X:      id,
+				Offset: id.Pos(),
+				Op:     token.DOUBLE_SHARP,
+				Y: &ast.Ident{
+					Offset: pos,
+					Name:   name,
+				},
+			}
+		}
+		if p.tryParenPair(true) {
+			return p.parseMacroCallExpr(id, true)
+		}
+		return id
 	}
-	return p.parseMacroUnaryExpr()
+	return p.parseMacroSharpExpr()
 }
 
 // 表达式一元运算
-func (p *Parser) parseMacroUnaryExpr() (node ast.MacroLiter) {
+func (p *Parser) parseMacroSharpExpr() (node ast.MacroLiter) {
 	from := p.pos
 	p.next() // #
 	off, _, name := p.expectedIdent()
@@ -530,20 +538,24 @@ func (p *Parser) parseMacroLitExpr(inMacro bool) (node ast.MacroLiter) {
 	}
 	p.next()
 	if p.tryParenPair(inMacro) {
-		p.skipWhitespace()
-		lp, _, _ := p.expected(token.LPAREN)
-		list := p.parseMacroArgument(inMacro)
-		rp, _, _ := p.expected(token.RPAREN)
-		return &ast.MacroCallExpr{
-			From:      id.Pos(),
-			To:        p.pos,
-			Lparen:    lp,
-			Name:      id,
-			Rparen:    rp,
-			ParamList: list,
-		}
+		return p.parseMacroCallExpr(id, inMacro)
 	}
 	return id
+}
+
+func (p *Parser) parseMacroCallExpr(id *ast.Ident, inMacro bool) (node ast.MacroLiter) {
+	p.skipWhitespace()
+	lp, _, _ := p.expected(token.LPAREN)
+	list := p.parseMacroArgument(inMacro)
+	rp, _, _ := p.expected(token.RPAREN)
+	return &ast.MacroCallExpr{
+		From:      id.Pos(),
+		To:        p.pos,
+		Lparen:    lp,
+		Name:      id,
+		Rparen:    rp,
+		ParamList: list,
+	}
 }
 
 // 查找完整的()
@@ -982,7 +994,7 @@ func ParseExpr(src []byte, off token.Pos) (ast.Expr, scanner.ErrorList) {
 }
 
 // 解析 body
-func ParseBodyLiter(src []byte, off token.Pos) (ast.MacroLiter, scanner.ErrorList) {
+func ParseBodyLiter(src []byte, off token.Pos) (*ast.MacroLitArray, scanner.ErrorList) {
 	p := &Parser{}
 	p.InitOffset(src, off)
 	return p.parseMacroFuncBody(), p.ErrorList()

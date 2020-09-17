@@ -161,7 +161,7 @@ func (m *MacroFuncValue) parseFuncBodyItem(v ast.MacroLiter, env *ExtractEnv) st
 		return vv.Value
 	case *ast.MacroLitArray:
 		t := ""
-		for _, v := range *m.stmt.Body {
+		for _, v := range *vv {
 			t += m.parseFuncBodyItem(v, env)
 		}
 		return t
@@ -207,5 +207,14 @@ func (m *MacroFuncValue) extractBinary(v *ast.BinaryExpr, env *ExtractEnv) strin
 		m.it.errorf(v.Pos(), errs.Error())
 		return m.it.extractItem(x, env) + m.it.extractItem(y, env)
 	}
-	return m.parseFuncBodyItem(stmt, env)
+	t := ""
+	for _, v := range *stmt {
+		if vv, ok := v.(*ast.BinaryExpr); ok {
+			t += m.it.litString(vv.X.(ast.MacroLiter))
+			t += m.it.litString(vv.Y.(ast.MacroLiter))
+		} else {
+			t += m.parseFuncBodyItem(v, env)
+		}
+	}
+	return t
 }
