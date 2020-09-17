@@ -231,7 +231,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 26,
 						Name:   "B",
 					},
-					LParam: 27,
+					Lparen: 27,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 28,
@@ -241,7 +241,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 32,
+					Rparen: 32,
 					Body: &ast.MacroLitArray{
 						&ast.Ident{
 							Offset: 34,
@@ -274,7 +274,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 8,
 						Name:   "A",
 					},
-					LParam: 9,
+					Lparen: 9,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 10,
@@ -284,7 +284,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 14,
+					Rparen: 14,
 					Body: &ast.MacroLitArray{
 						&ast.BinaryExpr{
 							X: &ast.Ident{
@@ -306,7 +306,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 29,
 						Name:   "B",
 					},
-					LParam: 30,
+					Lparen: 30,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 31,
@@ -316,7 +316,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 35,
+					Rparen: 35,
 					Body: &ast.MacroLitArray{
 						&ast.Ident{
 							Offset: 37,
@@ -344,7 +344,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 8,
 						Name:   "A",
 					},
-					LParam: 9,
+					Lparen: 9,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 12,
@@ -354,7 +354,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 18,
+					Rparen: 18,
 					Body: &ast.MacroLitArray{
 						&ast.BinaryExpr{
 							X: &ast.Ident{
@@ -376,7 +376,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 33,
 						Name:   "B",
 					},
-					LParam: 34,
+					Lparen: 34,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 37,
@@ -386,7 +386,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 43,
+					Rparen: 43,
 					Body: &ast.MacroLitArray{
 						&ast.BinaryExpr{
 							X: &ast.Ident{
@@ -421,7 +421,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 19,
 						Name:   "B",
 					},
-					LParam: 20,
+					Lparen: 20,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 21,
@@ -431,7 +431,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 24,
+					Rparen: 24,
 					Body: &ast.MacroLitArray{
 						&ast.BinaryExpr{
 							X: &ast.Ident{
@@ -466,7 +466,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 19,
 						Name:   "B",
 					},
-					LParam: 20,
+					Lparen: 20,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 21,
@@ -476,7 +476,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 24,
+					Rparen: 24,
 					Body: &ast.MacroLitArray{
 						&ast.MacroCallExpr{
 							From: 26, To: 30,
@@ -484,14 +484,14 @@ func TestParseSimple(t *testing.T) {
 								Offset: 26,
 								Name:   "C",
 							},
-							LParen: 27,
+							Lparen: 27,
 							ParamList: &ast.MacroLitArray{
 								&ast.Ident{
 									Offset: 28,
 									Name:   "x",
 								},
 							},
-							RParen: 29,
+							Rparen: 29,
 						},
 						&ast.BinaryExpr{
 							X: &ast.Ident{
@@ -526,7 +526,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 19,
 						Name:   "B",
 					},
-					LParam: 20,
+					Lparen: 20,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 21,
@@ -536,7 +536,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 24,
+					Rparen: 24,
 					Body: &ast.MacroLitArray{
 						&ast.MacroCallExpr{
 							From: 26, To: 35,
@@ -544,7 +544,7 @@ func TestParseSimple(t *testing.T) {
 								Offset: 26,
 								Name:   "C",
 							},
-							LParen: 27,
+							Lparen: 27,
 							ParamList: &ast.MacroLitArray{
 								&ast.MacroLitArray{
 									&ast.Text{
@@ -568,7 +568,7 @@ func TestParseSimple(t *testing.T) {
 									},
 								},
 							},
-							RParen: 34,
+							Rparen: 34,
 						},
 						&ast.BinaryExpr{
 							X: &ast.Ident{
@@ -603,7 +603,7 @@ func TestParseSimple(t *testing.T) {
 						Offset: 19,
 						Name:   "B",
 					},
-					LParam: 20,
+					Lparen: 20,
 					IdentList: []*ast.Ident{
 						{
 							Offset: 21,
@@ -613,7 +613,7 @@ func TestParseSimple(t *testing.T) {
 							Name:   "y",
 						},
 					},
-					RParam: 24,
+					Rparen: 24,
 					Body: &ast.MacroLitArray{
 						&ast.MacroCallExpr{
 							From: 26, To: 45,
@@ -621,7 +621,7 @@ func TestParseSimple(t *testing.T) {
 								Offset: 26,
 								Name:   "C",
 							},
-							LParen: 27,
+							Lparen: 27,
 							ParamList: &ast.MacroLitArray{
 								&ast.MacroLitArray{
 									&ast.MacroCallExpr{
@@ -630,14 +630,14 @@ func TestParseSimple(t *testing.T) {
 											Offset: 28,
 											Name:   "D",
 										},
-										LParen: 29,
+										Lparen: 29,
 										ParamList: &ast.MacroLitArray{
 											&ast.Ident{
 												Offset: 30,
 												Name:   "x",
 											},
 										},
-										RParen: 31,
+										Rparen: 31,
 									},
 									&ast.Text{
 										Offset: 32,
@@ -657,8 +657,8 @@ func TestParseSimple(t *testing.T) {
 											Offset: 37,
 											Name:   "E",
 										},
-										LParen: 38,
-										RParen: 39,
+										Lparen: 38,
+										Rparen: 39,
 									},
 									&ast.MacroCallExpr{
 										From: 40, To: 44,
@@ -666,18 +666,18 @@ func TestParseSimple(t *testing.T) {
 											Offset: 40,
 											Name:   "F",
 										},
-										LParen: 41,
+										Lparen: 41,
 										ParamList: &ast.MacroLitArray{
 											&ast.Ident{
 												Offset: 42,
 												Name:   "g",
 											},
 										},
-										RParen: 43,
+										Rparen: 43,
 									},
 								},
 							},
-							RParen: 44,
+							Rparen: 44,
 						},
 						&ast.Text{
 							Offset: 45,

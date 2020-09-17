@@ -1,0 +1,26 @@
+
+
+
+
+
+print("^A !> 20")
+
+
+
+
+
+print("defined EMPTY");
+
+
+
+
+
+print("-A !> 0");
+
+
+
+
+
+print("!!A");
+
+"A""A"

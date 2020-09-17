@@ -96,9 +96,9 @@ type (
 	FuncDefineStmt struct {
 		From, To  token.Pos      // 标识符位置
 		Name      *Ident         // 定义的标识符
-		LParam    token.Pos      // (
+		Lparen    token.Pos      // (
 		IdentList []*Ident       // 定义的参数
-		RParam    token.Pos      // )
+		Rparen    token.Pos      // )
 		Body      *MacroLitArray // 定义的语句
 	}
 
@@ -113,9 +113,9 @@ type (
 	MacroCallExpr struct {
 		From, To  token.Pos      // 标识符位置
 		Name      *Ident         // 定义的标识符
-		LParen    token.Pos      // (
+		Lparen    token.Pos      // (
 		ParamList *MacroLitArray // 调用的参数列表
-		RParen    token.Pos      // )
+		Rparen    token.Pos      // )
 	}
 
 	// 括号表达式

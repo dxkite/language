@@ -49,7 +49,7 @@ func (p *Parser) ParseStmts() ast.Stmt {
 				node = p.parseMacroStmt(from)
 			}
 		} else {
-			node = p.ParseTextStmt()
+			node = p.parseTextStmt()
 		}
 		if node != nil {
 			block.Add(node)
@@ -85,7 +85,7 @@ func (p *Parser) parseBodyStmts() ast.Stmt {
 				node = p.parseMacroStmt(from)
 			}
 		} else {
-			node = p.ParseTextStmt()
+			node = p.parseTextStmt()
 		}
 		if node != nil {
 			block.Add(node)
@@ -121,6 +121,7 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 		cond = &ast.IfStmt{
 			X: p.parseIfExpr(),
 		}
+		p.scanToMacroEnd(true)
 	} else {
 		p.next()
 		p.skipWhitespace()
@@ -179,16 +180,64 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 	return
 }
 
-// 提取表达式，不解析
+// 提取表达式
 func (p *Parser) parseIfExpr() ast.Expr {
-	p.skipWhitespace()
+	node := &ast.MacroLitArray{}
+	for !isMacroEnd(p.tok) {
+		// 解析
+		if isIdent(p.tok) {
+			node.Append(p.parseIdentExpr())
+		} else if TokenIn(p.tok, token.DEFINED) {
+			node.Append(p.parseDefined())
+		} else {
+			node.Append(p.parseText())
+		}
+	}
+	return nilIfEmpty(node)
+}
+
+// 解析 defined
+func (p *Parser) parseDefined() (node ast.MacroLiter) {
 	from := p.pos
-	to := p.scanToMacroEnd(false)
-	expr := clearBackslash(p.scanner.Lit(from, to))
-	return &ast.Text{
-		Offset: from,
-		Kind:   token.TEXT,
-		Text:   expr,
+	p.next() // defined
+	id := &ast.Text{
+		Offset: p.pos,
+		Kind:   token.DEFINED,
+		Text:   p.lit,
+	}
+	if v := p.parseDefinedValue(); v != nil {
+		return &ast.UnaryExpr{
+			Offset: from,
+			Op:     token.DEFINED,
+			X:      v,
+		}
+	}
+	return id
+}
+
+func (p *Parser) parseDefinedValue() (node ast.Expr) {
+	pp := p.clone()
+	if p.tryParenPair(true) {
+		p.skipWhitespace()
+		lp, _, _ := p.expected(token.LPAREN)
+		v := p.parseDefinedValue()
+		rp, _, _ := p.expected(token.RPAREN)
+		return &ast.ParenExpr{
+			Lparen: lp,
+			X:      v,
+			Rparen: rp,
+		}
+	} else if p.nextNotEmptyIsIdent() {
+		p.skipWhitespace()
+		pos, _, lit := p.expectedIdent()
+		return &ast.Ident{
+			Offset: pos,
+			Name:   lit,
+		}
+	} else {
+		defer p.reset(pp)
+		p.errorf(p.pos, "unexpected token %v after defined", p.tok)
+		return nil
 	}
 }
 
@@ -316,8 +365,8 @@ func (p *Parser) parseDefine(from token.Pos) ast.Stmt {
 		}
 		rp, _, _ := p.expected(token.RPAREN)
 		node.IdentList = list
-		node.LParam = lp
-		node.RParam = rp
+		node.Lparen = lp
+		node.Rparen = rp
 		p.skipWhitespace()
 		node.Body = p.parseMacroFuncBody()
 		node.To = p.pos
@@ -397,11 +446,11 @@ func (p *Parser) parseMacroTextBody() (node *ast.MacroLitArray) {
 }
 
 // 解析文本语句
-func (p *Parser) ParseTextStmt() (node *ast.MacroLitArray) {
+func (p *Parser) parseTextStmt() (node *ast.MacroLitArray) {
 	node = &ast.MacroLitArray{}
 	for TokenNotIn(p.tok, token.EOF, token.MACRO) {
 		// 解析
-		if TokenIn(p.tok, token.IDENT) || p.tok.IsKeyword() {
+		if isIdent(p.tok) {
 			node.Append(p.parseMacroLitExpr(false))
 		} else {
 			node.Append(p.parseText())
@@ -488,9 +537,9 @@ func (p *Parser) parseMacroLitExpr(inMacro bool) (node ast.MacroLiter) {
 		return &ast.MacroCallExpr{
 			From:      id.Pos(),
 			To:        p.pos,
-			LParen:    lp,
+			Lparen:    lp,
 			Name:      id,
-			RParen:    rp,
+			Rparen:    rp,
 			ParamList: list,
 		}
 	}
@@ -847,6 +896,19 @@ func (p *Parser) nextNotEmptyIs(tok ...token.Token) bool {
 	return ok
 }
 
+// 下一个是ID标识符
+func (p *Parser) nextNotEmptyIsIdent() bool {
+	pp := p.clone()
+	defer p.reset(pp)
+	p.skipWhitespace()
+	if !isMacroEnd(p.tok) {
+		if isIdent(p.tok) {
+			return true
+		}
+	}
+	return false
+}
+
 // 检查下一个 token
 func (p *Parser) tryNext(tok ...token.Token) (token.Token, bool) {
 	pp := p.clone()
@@ -917,13 +979,6 @@ func ParseExpr(src []byte, off token.Pos) (ast.Expr, scanner.ErrorList) {
 	p := &Parser{}
 	p.InitOffset(src, off)
 	return p.ParseExpr(), p.ErrorList()
-}
-
-// 解析非宏定义区域文本(普通文本/标识符/调用)
-func ParseTextStmt(src []byte, off token.Pos) (*ast.MacroLitArray, scanner.ErrorList) {
-	p := &Parser{}
-	p.InitOffset(src, off)
-	return p.ParseTextStmt(), p.ErrorList()
 }
 
 func nilIfEmpty(array *ast.MacroLitArray) *ast.MacroLitArray {
