@@ -42,7 +42,7 @@ func (it *Interpreter) evalStmt(node ast.Node) {
 	case *ast.MacroLitArray:
 		it.src.WriteString(it.extractLine(n, NewGlobalEnv(token.NoPos)))
 	case *ast.Ident:
-		it.src.WriteString(it.extractMacroValue(token.NoPos, n))
+		it.src.WriteString(it.extractMacroValue(n, NewGlobalEnv(token.NoPos)))
 	case *ast.ValDefineStmt:
 		it.evalDefineVal(n)
 	case *ast.UnDefineStmt:
@@ -124,24 +124,18 @@ func (it *Interpreter) writePlaceholder(node ast.Node) {
 
 // 展开宏标识符
 // 展开的位置
-func (it *Interpreter) extractMacroValue(pos token.Pos, id *ast.Ident) string {
-	if v, ok, _ := it.extractIdent(pos, id); ok {
+func (it *Interpreter) extractMacroValue(id *ast.Ident, env *ExtractEnv) string {
+	if v, ok, _ := it.extractIdent(id, env); ok {
 		return v
 	}
 	if id.Name == "__LINE__" {
-		if pos == token.NoPos {
-			return strconv.Itoa(it.pos.CreatePosition(id.Pos()).Line)
-		}
-		return strconv.Itoa(it.pos.CreatePosition(pos).Line)
+		return strconv.Itoa(it.pos.CreatePosition(env.Pos(id.Pos())).Line)
 	}
 	return id.Name
 }
 
 // 展开定义的标识符
-func (it *Interpreter) extractIdent(pos token.Pos, id *ast.Ident) (str string, exist, empty bool) {
-	if pos == token.NoPos {
-		pos = id.Pos()
-	}
+func (it *Interpreter) extractIdent(id *ast.Ident, env *ExtractEnv) (str string, exist, empty bool) {
 	if v, ok := it.Val[id.Name]; ok {
 		exist = true
 		empty = v.IsEmptyBody()
@@ -150,9 +144,9 @@ func (it *Interpreter) extractIdent(pos token.Pos, id *ast.Ident) (str string, e
 		case *MacroFuncValue:
 			str = id.Name
 		case *MacroLitValue:
-			str = vv.Extract(NewGlobalEnv(pos))
+			str = vv.Extract(env)
 		case MacroString:
-			str = vv.Extract(NewGlobalEnv(pos))
+			str = vv.Extract(env)
 		}
 		return
 	}
@@ -178,7 +172,7 @@ func (it *Interpreter) extractMacroFuncWith(expr *ast.MacroCallExpr, env *Extrac
 
 // 调用未定义宏函数
 func (it *Interpreter) macroFuncString(expr *ast.MacroCallExpr, env *ExtractEnv) string {
-	s := it.extractMacroValue(env.Pos(expr.Pos()), expr.Name)
+	s := it.extractMacroValue(expr.Name, env)
 	s += strings.Repeat(" ", int(expr.Lparen-expr.Name.End()))
 	s += "("
 	s += strings.Join(it.macroParamString(expr.ParamList, env), ",")
@@ -884,7 +878,7 @@ func (it Interpreter) evalDefined(expr ast.Expr, typ string) bool {
 
 // 获取宏定义值
 func (it Interpreter) evalIdent(id *ast.Ident) interface{} {
-	if v, ok, _ := it.extractIdent(id.Pos(), id); ok {
+	if v, ok, _ := it.extractIdent(id, NewGlobalEnv(id.Pos())); ok {
 		exp, errs := parser.ParseExpr([]byte(v), id.Pos())
 		if len(errs) > 0 {
 			it.errorf(id.Pos(), "error extract ident expr %s", v)
@@ -910,7 +904,7 @@ func (it Interpreter) expectedValue(value interface{}) interface{} {
 	case float64, uint8, int32:
 		return v
 	case *ast.Ident:
-		vv := it.extractMacroValue(v.Pos(), v)
+		vv := it.extractMacroValue(v, NewGlobalEnv(v.Pos()))
 		if v, err := strconv.ParseInt(vv, 0, 32); err == nil {
 			return v
 		}

@@ -1,6 +1,10 @@
 
 
+
 A(10 A(10))
 
 
 "call(A(x))"(A(100))
+
+
+GLOBAL(sqlite3_vfs *, vfsList)

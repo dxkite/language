@@ -10,7 +10,7 @@ import (
 
 type ExtractEnv struct {
 	pos           token.Pos                 // 外部位置
-	Name          string                    // 外部函数
+	Name          string                    // 当前展开的宏
 	Val           map[string]ast.MacroLiter // 外部参数
 	keepDefinedId bool                      // 保留定义的ID
 }
@@ -40,8 +40,8 @@ func (e *ExtractEnv) Pos(pos token.Pos) token.Pos {
 	return pos
 }
 
-// 是否是调用的函数
-func (e *ExtractEnv) IsCaller(name string) bool {
+// 是否是当前展开的宏
+func (e *ExtractEnv) IsExtract(name string) bool {
 	return name == e.Name
 }
 
@@ -61,22 +61,29 @@ func (e *ExtractEnv) InMacro() bool {
 // 展开函数
 func (e *ExtractEnv) ExtractFunc(it *Interpreter, v *ast.MacroCallExpr) string {
 	//fmt.Println("extract fun", v.Name.Name, "from", e.Name, "at", it.pos.CreatePosition(e.Pos(v.Pos())))
-	if e.IsCaller(v.Name.Name) {
+	//fmt.Println("call at", it.pos.CreatePosition(v.Pos()))
+	if e.IsExtract(v.Name.Name) {
 		return it.macroFuncString(v, e)
 	}
 	// 从全局调用的创建新的调用环境
 	if e.Name == "" {
-		return it.extractMacroFuncWith(v, NewEnv(e.pos, v.Name.Name, e.Val))
+		return it.extractMacroFuncWith(v, NewEnv(v.Pos(), v.Name.Name, e.Val))
 	}
 	return it.extractMacroFuncWith(v, e)
 }
 
 // 展开宏值
 func (e *ExtractEnv) ExtractVal(it *Interpreter, v *ast.Ident) string {
+	if e.IsExtract(v.Name) {
+		return v.Name
+	}
 	if e.HasValue(v.Name) {
 		return it.extractItem(e.Val[v.Name], e)
 	}
-	return it.extractMacroValue(e.Pos(v.Pos()), v)
+	if e.Name == "" {
+		return it.extractMacroValue(v, NewEnv(v.Pos(), v.Name, e.Val))
+	}
+	return it.extractMacroValue(v, e)
 }
 
 type MacroValue interface {
@@ -108,6 +115,10 @@ func (m *MacroLitValue) Extract(env *ExtractEnv) string {
 		return ""
 	}
 	return m.it.extractLine(m.stmt.Body, env)
+}
+
+func (m *MacroLitValue) String() string {
+	return m.it.litString(m.stmt.Body)
 }
 
 func (m MacroLitValue) IsEmptyBody() bool {
