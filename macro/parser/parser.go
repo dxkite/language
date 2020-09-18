@@ -181,7 +181,7 @@ func (p *Parser) parseMacroLogicStmt(from token.Pos) (node ast.CondStmt) {
 }
 
 // 提取表达式
-func (p *Parser) parseIfExpr() ast.Expr {
+func (p *Parser) parseIfExpr() ast.MacroLiter {
 	node := &ast.MacroLitArray{}
 	for !isMacroEnd(p.tok) {
 		// 解析
@@ -215,7 +215,7 @@ func (p *Parser) parseDefined() (node ast.MacroLiter) {
 	return id
 }
 
-func (p *Parser) parseDefinedValue() (node ast.Expr) {
+func (p *Parser) parseDefinedValue() (node ast.MacroLiter) {
 	pp := p.clone()
 	if p.tryParenPair(true) {
 		p.skipWhitespace()
@@ -584,12 +584,12 @@ func (p *Parser) tryParenPair(inMacro bool) bool {
 
 // 找到调用参数
 // macro_argument =
-//    macro_param_lit  <  "," macro_param_lit  >  .
+//  ( macro_param_lit  <  "," macro_param_lit  > )
+//  / "(" text until ")"  .
 func (p *Parser) parseMacroArgument(inMacro bool) (node *ast.MacroLitArray) {
 	node = &ast.MacroLitArray{}
 	for TokenNotIn(p.tok, token.RPAREN) && !isMacroArgEnd(inMacro, p.tok) {
-		lit := p.parseMacroArgumentLit(inMacro)
-		node.Append(lit)
+		node.Append(p.parseMacroArgumentLit(inMacro))
 		if p.tok == token.COMMA {
 			p.next() // ,
 		}
@@ -603,13 +603,28 @@ func (p *Parser) parseMacroArgument(inMacro bool) (node *ast.MacroLitArray) {
 func (p *Parser) parseMacroArgumentLit(inMacro bool) (node ast.MacroLiter) {
 	list := &ast.MacroLitArray{}
 	for TokenNotIn(p.tok, token.COMMA, token.RPAREN) && !isMacroArgEnd(inMacro, p.tok) {
-		lit := p.parseMacroArgumentLitItem(inMacro)
-		list.Append(lit)
+		if p.tok == token.LPAREN {
+			list.Append(p.parseMacroArgumentParenItem(inMacro))
+		} else {
+			list.Append(p.parseMacroArgumentLitItem(inMacro))
+		}
 	}
 	if len(*list) == 1 {
 		return (*list)[0]
 	}
 	return nilIfEmpty(list)
+}
+
+// 获取 ()
+func (p *Parser) parseMacroArgumentParenItem(inMacro bool) (node ast.MacroLiter) {
+	lp, _, _ := p.expected(token.LPAREN)
+	list := p.parseMacroArgument(inMacro)
+	rp, _, _ := p.expected(token.RPAREN)
+	return &ast.ParenExpr{
+		Lparen: lp,
+		X:      list,
+		Rparen: rp,
+	}
 }
 
 // macro_item =
@@ -657,13 +672,13 @@ func (p *Parser) parseIf() ast.Stmt {
 }
 
 // 解析宏表达式
-func (p *Parser) parseExpr() (expr ast.Expr) {
+func (p *Parser) parseExpr() (expr ast.MacroLiter) {
 	return p.parseExprPrecedence(token.LowestPrec)
 }
 
 // 解析表达式
 // 优先级运算解析
-func (p *Parser) parseExprPrecedence(prec int) (expr ast.Expr) {
+func (p *Parser) parseExprPrecedence(prec int) (expr ast.MacroLiter) {
 	p.skipWhitespace()
 	expr = p.parseOpExpr(prec + 1)
 	p.skipWhitespace()
@@ -685,7 +700,7 @@ func (p *Parser) parseExprPrecedence(prec int) (expr ast.Expr) {
 }
 
 // 	( ("-" / "~" / "defined" / "!" ) parseTermExpr )
-func (p *Parser) parseOpExpr(prec int) (expr ast.Expr) {
+func (p *Parser) parseOpExpr(prec int) (expr ast.MacroLiter) {
 	if prec >= token.UnaryPrec {
 		return p.parseUnaryExpr()
 	} else {
@@ -694,7 +709,7 @@ func (p *Parser) parseOpExpr(prec int) (expr ast.Expr) {
 }
 
 // 	( ("-" / "~" / "defined" / "!" ) parseTermExpr )
-func (p *Parser) parseUnaryExpr() ast.Expr {
+func (p *Parser) parseUnaryExpr() ast.MacroLiter {
 	p.skipWhitespace()
 	var expr *ast.UnaryExpr
 	var last *ast.UnaryExpr
@@ -725,7 +740,7 @@ func (p *Parser) parseUnaryExpr() ast.Expr {
 //  / numeric_expression
 //  / identifier
 //  / macro_call_expr.
-func (p *Parser) parseTermExpr() (expr ast.Expr) {
+func (p *Parser) parseTermExpr() (expr ast.MacroLiter) {
 	p.skipWhitespace()
 	switch p.tok {
 	case token.LPAREN:
@@ -761,7 +776,7 @@ func (p *Parser) parseTermExpr() (expr ast.Expr) {
 //    / float_literal token.FLOAT
 //    / string token.STRING
 //    / char  token.CHAR
-func (p *Parser) parseLiteralExpr() (expr ast.Expr) {
+func (p *Parser) parseLiteralExpr() (expr ast.MacroLiter) {
 	expr = &ast.LitExpr{
 		Offset: p.pos,
 		Kind:   p.tok,
@@ -987,7 +1002,7 @@ func Parse(src []byte) (ast.Node, scanner.ErrorList) {
 }
 
 // 解析表达式
-func ParseExpr(src []byte, off token.Pos) (ast.Expr, scanner.ErrorList) {
+func ParseExpr(src []byte, off token.Pos) (ast.MacroLiter, scanner.ErrorList) {
 	p := &Parser{}
 	p.InitOffset(src, off)
 	return p.parseExpr(), p.ErrorList()

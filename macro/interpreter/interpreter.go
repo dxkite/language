@@ -40,7 +40,7 @@ func (it *Interpreter) evalStmt(node ast.Node) {
 			it.evalStmt(sub)
 		}
 	case *ast.MacroLitArray:
-		it.src.WriteString(it.extractLine(n, NewGlobalEnv(token.NoPos)))
+		it.src.WriteString(it.extract(n, NewGlobalEnv(token.NoPos)))
 	case *ast.Ident:
 		it.src.WriteString(it.extractMacroValue(n, NewGlobalEnv(token.NoPos)))
 	case *ast.ValDefineStmt:
@@ -161,7 +161,7 @@ func (it *Interpreter) extractMacroFuncWith(expr *ast.MacroCallExpr, env *Extrac
 	if v, ok := it.Val[name]; ok {
 		if vv, ok := v.(*MacroFuncValue); ok {
 			if params, err := buildMacroParameter(expr, vv, env); err == nil {
-				return vv.Extract(NewEnv(env.Pos(expr.Pos()), env.Name, params))
+				return vv.Extract(NewExtractEnv(env.Pos(expr.Pos()), env.Stack, params))
 			} else {
 				it.error(expr.Pos(), err.Error())
 			}
@@ -196,22 +196,25 @@ func (it *Interpreter) macroParamString(v *ast.MacroLitArray, env *ExtractEnv) [
 func (it *Interpreter) macroParamItemString(item ast.MacroLiter, env *ExtractEnv) string {
 	switch t := item.(type) {
 	case *ast.MacroLitArray:
-		return it.extractLine(t, env)
+		return it.extract(t, env)
 	default:
-		return it.extractItem(t, env)
+		return it.extract(t, env)
 	}
 }
 
 // 构建函数参数
 func buildMacroParameter(expr *ast.MacroCallExpr, def *MacroFuncValue, env *ExtractEnv) (map[string]ast.MacroLiter, error) {
 	il := def.stmt.IdentList
+	params := map[string]ast.MacroLiter{}
+	if expr.ParamList == nil {
+		return params, nil
+	}
 	pl := *expr.ParamList
 	r := len(il)
 	p := len(pl)
 	if r != p {
-		return nil, errors.New(fmt.Sprintf("expected params %d got %d", r, p))
+		return nil, errors.New(fmt.Sprintf("%s expected %d params got %d", expr.Name.Name, r, p))
 	}
-	params := map[string]ast.MacroLiter{}
 	for i := range def.stmt.IdentList {
 		params[il[i].Name] = trimSpace(bindParamIdent(pl[i], env))
 	}
@@ -269,7 +272,7 @@ func (it Interpreter) macroValueString(array *ast.MacroLitArray, env *ExtractEnv
 }
 
 // 展开宏列表中的参数
-func (it Interpreter) macroValueItemString(v ast.Expr, env *ExtractEnv) string {
+func (it Interpreter) macroValueItemString(v ast.MacroLiter, env *ExtractEnv) string {
 	switch vv := v.(type) {
 	case *ast.Text:
 		if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
@@ -283,8 +286,10 @@ func (it Interpreter) macroValueItemString(v ast.Expr, env *ExtractEnv) string {
 		return it.macroValueString(vv, env)
 	case *ast.LitExpr:
 		return vv.Value
+	case *ast.ParenExpr:
+		return "(" + it.macroValueItemString(vv.X, env) + ")"
 	default:
-		it.errorf(v.Pos(), "unknown expr %v", v)
+		it.errorf(v.Pos(), "unknown expr %s", reflect.TypeOf(v))
 	}
 	return ""
 }
@@ -308,6 +313,8 @@ func (it Interpreter) litString(v ast.MacroLiter) string {
 		return t
 	case *ast.LitExpr:
 		return vv.Value
+	case *ast.ParenExpr:
+		return "(" + it.litString(vv.X) + ")"
 	default:
 		it.errorf(v.Pos(), "unknown expr %s", reflect.TypeOf(v))
 	}
@@ -327,26 +334,9 @@ func (it *Interpreter) funcLitString(expr *ast.MacroCallExpr) string {
 	return s
 }
 
-// 展开宏定义行
-func (it Interpreter) extractLine(stmt interface{}, env *ExtractEnv) string {
-	t := ""
-	switch v := stmt.(type) {
-	case string:
-		return v
-	case *ast.MacroLitArray:
-		for _, v := range *v {
-			t += it.extractItem(v, env)
-		}
-	case *ast.BlockStmt:
-		for _, v := range *v {
-			t += it.extractLine(v, env)
-		}
-	}
-	return t
-}
-
-// 展开参数调用
-func (it *Interpreter) extractItem(v ast.MacroLiter, env *ExtractEnv) string {
+// 展开宏
+//
+func (it *Interpreter) extract(v ast.MacroLiter, env *ExtractEnv) string {
 	switch vv := v.(type) {
 	case *ast.Text:
 		if parser.TokenNotIn(vv.Kind, token.BACKSLASH_NEWLINE, token.BLOCK_COMMENT) {
@@ -357,7 +347,13 @@ func (it *Interpreter) extractItem(v ast.MacroLiter, env *ExtractEnv) string {
 	case *ast.Ident:
 		return env.ExtractVal(it, vv)
 	case *ast.MacroLitArray:
-		return it.extractLine(vv, env)
+		t := ""
+		for _, v := range *vv {
+			t += it.extract(v, env)
+		}
+		return t
+	case *ast.ParenExpr:
+		return "(" + it.extract(vv.X, env) + ")"
 	case *ast.UnaryExpr:
 		if vv.Op == token.DEFINED {
 			return it.parseDefined(vv)
@@ -374,14 +370,11 @@ func (it Interpreter) parseDefined(v *ast.UnaryExpr) string {
 	return s
 }
 
-func (it Interpreter) parseDefinedValue(v ast.Expr) string {
+func (it Interpreter) parseDefinedValue(v ast.MacroLiter) string {
 	if id, ok := v.(*ast.Ident); ok {
 		return id.Name
 	} else if p, ok := v.(*ast.ParenExpr); ok {
-		s := "("
-		s += it.parseDefinedValue(p.X)
-		s += ")"
-		return s
+		return "(" + it.parseDefinedValue(p.X) + ")"
 	} else {
 		it.errorf(v.Pos(), "unexpected expr %s in defined", reflect.TypeOf(v))
 		return ""
@@ -421,8 +414,8 @@ func (it *Interpreter) evalIfNoDefined(stmt *ast.IfNoDefStmt) {
 	it.src.WriteString("\n") // #endif
 }
 
-func (it *Interpreter) evalIfBoolExpr(expr ast.Expr) bool {
-	ee := it.extractLine(expr, NewGlobalEnv(expr.Pos()))
+func (it *Interpreter) evalIfBoolExpr(expr ast.MacroLiter) bool {
+	ee := it.extract(expr, NewGlobalEnv(expr.Pos()))
 	//fmt.Println("expr", strconv.QuoteToGraphic(ee))
 	return it.evalExpr(ee, expr.Pos())
 }
@@ -529,14 +522,14 @@ func (it Interpreter) evalValue(expr interface{}) interface{} {
 		return it.evalBinaryExpr(xx)
 	case *ast.MacroCallExpr:
 		return it.extractMacroFuncWith(xx, NewGlobalEnv(xx.Pos()))
-	case ast.Expr:
+	case ast.MacroLiter:
 		it.errorf(xx.Pos(), "unexpected token %v", xx)
 	}
 	return nil
 }
 
 // 解析Ident
-func (it Interpreter) expectedIdent(expr ast.Expr) *ast.Ident {
+func (it Interpreter) expectedIdent(expr ast.MacroLiter) *ast.Ident {
 	switch xx := expr.(type) {
 	case *ast.Ident:
 		return xx
@@ -546,7 +539,7 @@ func (it Interpreter) expectedIdent(expr ast.Expr) *ast.Ident {
 	return nil
 }
 
-func (it Interpreter) evalOpInt(x, y interface{}, ex, ey ast.Expr, tx, ty, op token.Token) interface{} {
+func (it Interpreter) evalOpInt(x, y interface{}, ex, ey ast.MacroLiter, tx, ty, op token.Token) interface{} {
 	var yy int32
 	if _, ok := y.(float64); ty == token.FLOAT && ok {
 		yy = it.intValue(y)
@@ -864,7 +857,7 @@ func (it Interpreter) evalUnaryExpr(expr *ast.UnaryExpr) interface{} {
 }
 
 // 定义指令
-func (it Interpreter) evalDefined(expr ast.Expr, typ string) bool {
+func (it Interpreter) evalDefined(expr ast.MacroLiter, typ string) bool {
 	id := it.expectedIdent(expr)
 	if id != nil {
 		if _, ok := it.Val[id.Name]; ok {
@@ -881,7 +874,7 @@ func (it Interpreter) evalIdent(id *ast.Ident) interface{} {
 	if v, ok, _ := it.extractIdent(id, NewGlobalEnv(id.Pos())); ok {
 		exp, errs := parser.ParseExpr([]byte(v), id.Pos())
 		if len(errs) > 0 {
-			it.errorf(id.Pos(), "error extract ident expr %s", v)
+			it.errorf(id.Pos(), "error Extract ident expr %s", v)
 		}
 		return it.evalValue(exp)
 	}
@@ -915,7 +908,7 @@ func (it Interpreter) expectedValue(value interface{}) interface{} {
 			return v
 		}
 		it.errorf(v.Pos(), "unexpected ident value %v", v)
-	case ast.Expr:
+	case ast.MacroLiter:
 		it.errorf(v.Pos(), "unexpected value %v", v)
 	}
 	return uint8(0)

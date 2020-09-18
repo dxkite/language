@@ -10,15 +10,9 @@ type Node interface {
 	End() token.Pos
 }
 
-// 表达式
-type Expr interface {
-	Node
-	exprNode()
-}
-
 // 宏字面量
 type MacroLiter interface {
-	Expr
+	Node
 	litNode()
 }
 
@@ -120,9 +114,9 @@ type (
 
 	// 括号表达式
 	ParenExpr struct {
-		Lparen token.Pos // "("
-		X      Expr      // 表达式值
-		Rparen token.Pos // ")"
+		Lparen token.Pos  // "("
+		X      MacroLiter // 表达式值
+		Rparen token.Pos  // ")"
 	}
 
 	// 字面量数组
@@ -159,17 +153,17 @@ type (
 
 	// if语句
 	IfStmt struct {
-		From, To token.Pos // 标识符位置
-		X        Expr      // 条件
-		Then     Stmt      // 正确
-		Else     Stmt      // 错误
+		From, To token.Pos  // 标识符位置
+		X        MacroLiter // 条件
+		Then     Stmt       // 正确
+		Else     Stmt       // 错误
 	}
 
 	ElseIfStmt struct {
-		From, To token.Pos // 标识符位置
-		X        Expr      // 条件
-		Then     Stmt      // 正确
-		Else     Stmt      // 错误
+		From, To token.Pos  // 标识符位置
+		X        MacroLiter // 条件
+		Then     Stmt       // 正确
+		Else     Stmt       // 错误
 	}
 
 	// ifdef语句
@@ -192,34 +186,31 @@ type (
 	UnaryExpr struct {
 		Offset token.Pos   // 标识符位置
 		Op     token.Token // 操作类型
-		X      Expr        // 操作的表达式
+		X      MacroLiter  // 操作的表达式
 	}
 
 	// 二元运算
 	BinaryExpr struct {
-		X      Expr        // 左值
+		X      MacroLiter  // 左值
 		Offset token.Pos   // 操作符位置
 		Op     token.Token // 操作类型
-		Y      Expr        // 右值
+		Y      MacroLiter  // 右值
 	}
 )
 
 //------ Node
 func (t *BadExpr) Pos() token.Pos { return t.Offset }
 func (t *BadExpr) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Lit)) }
-func (*BadExpr) exprNode()        {}
 func (*BadExpr) stmtNode()        {}
 func (*BadExpr) litNode()         {}
 
 func (t *Ident) Pos() token.Pos { return t.Offset }
 func (t *Ident) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Name)) }
-func (*Ident) exprNode()        {}
 func (*Ident) litNode()         {}
 
 func (t *Text) Pos() token.Pos { return t.Offset }
 func (t *Text) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Text)) }
 func (*Text) stmtNode()        {}
-func (*Text) exprNode()        {}
 func (*Text) litNode()         {}
 
 // 判断是否为空文本节点
@@ -286,16 +277,14 @@ func (*IncludeStmt) stmtNode()        {}
 
 func (t *MacroCallExpr) Pos() token.Pos { return t.From }
 func (t *MacroCallExpr) End() token.Pos { return t.To }
-func (*MacroCallExpr) exprNode()        {}
 func (*MacroCallExpr) litNode()         {}
 
 func (t *ParenExpr) Pos() token.Pos { return t.Lparen }
 func (t *ParenExpr) End() token.Pos { return t.Rparen }
-func (*ParenExpr) exprNode()        {}
+func (*ParenExpr) litNode()         {}
 
 func (t *LitExpr) Pos() token.Pos { return t.Offset }
 func (t *LitExpr) End() token.Pos { return token.Pos(int(t.Offset) + len(t.Value)) }
-func (*LitExpr) exprNode()        {}
 func (*LitExpr) litNode()         {}
 
 func (t *MacroCmdStmt) Pos() token.Pos { return t.Offset }
@@ -364,12 +353,10 @@ func (stmt *ElseIfStmt) SetFalseStmt(f Stmt) {
 }
 func (t *UnaryExpr) Pos() token.Pos { return t.Offset }
 func (t *UnaryExpr) End() token.Pos { return t.X.End() }
-func (*UnaryExpr) exprNode()        {}
 func (*UnaryExpr) litNode()         {}
 
 func (t *BinaryExpr) Pos() token.Pos { return t.X.Pos() }
 func (t *BinaryExpr) End() token.Pos { return t.Y.End() }
-func (*BinaryExpr) exprNode()        {}
 func (*BinaryExpr) litNode()         {}
 
 func (t MacroLitArray) Pos() token.Pos {
@@ -390,6 +377,5 @@ func (t *MacroLitArray) Append(liter MacroLiter) {
 	*t = append(*t, liter)
 }
 
-func (*MacroLitArray) exprNode() {}
 func (*MacroLitArray) litNode()  {}
 func (*MacroLitArray) stmtNode() {}

@@ -753,7 +753,7 @@ func Test_parser_parseLiteralExpr(t *testing.T) {
 	tests := []struct {
 		name     string
 		code     string
-		wantExpr ast.Expr
+		wantExpr ast.MacroLiter
 	}{
 		{
 			"number",
@@ -818,7 +818,7 @@ func Test_parser_parseUnaryExpr(t *testing.T) {
 	tests := []struct {
 		name     string
 		code     string
-		wantExpr ast.Expr
+		wantExpr ast.MacroLiter
 	}{
 		{
 			"not a",
@@ -891,7 +891,7 @@ func Test_parser_parseExpr(t *testing.T) {
 	tests := []struct {
 		name     string
 		code     string
-		wantExpr ast.Expr
+		wantExpr ast.MacroLiter
 	}{
 		{
 			"a*a/a%a+b",

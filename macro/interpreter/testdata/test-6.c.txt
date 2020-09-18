@@ -1,0 +1,12 @@
+
+"READ_UTF8("c")";
+
+
+
+
+
+ {                                     0, (SQLITE_UTF8|SQLITE_FUNC_WINDOW|0), 0, 0,                        percent_rankStepFunc, percent_rankFinalizeFunc, percent_rankValueFunc,                 percent_rankInvFunc, percent_rankName, {0}                                       }
+
+if( sqlite3IoTrace ){ sqlite3IoTrace ("UNLOCK %p %d\n" pPager eLock); }
+
+sqlite3Put4byte((u8*)((char*)pPg->pData)+24,change_counter);

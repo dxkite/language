@@ -9,4 +9,7 @@ A(10)
 A(100)
 /*递归变量*/
 #define vfsList GLOBAL(sqlite3_vfs *, vfsList)
-vfsList
+  for(pVfs = vfsList; pVfs; pVfs=pVfs->pNext){
+    if( zVfs==0 ) break;
+    if( strcmp(zVfs, pVfs->zName)==0 ) break;
+  }

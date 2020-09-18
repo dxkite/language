@@ -7,4 +7,7 @@ A(10 A(10))
 "call(A(x))"(A(100))
 
 
-GLOBAL(sqlite3_vfs *, vfsList)
+  for(pVfs = GLOBAL(sqlite3_vfs *, vfsList); pVfs; pVfs=pVfs->pNext){
+    if( zVfs==0 ) break;
+    if( strcmp(zVfs, pVfs->zName)==0 ) break;
+  }
