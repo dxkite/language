@@ -140,11 +140,7 @@ define_statement    =
 
 
 line_statement  =
-    ( macro_prefix "#line" decimal_digits [ string ] ) .
-
-
-nop_statement =
-    ( macro_prefix "#" text_line ) .
+    ( macro_prefix ( "#line" / "#" ) decimal_digits [ string ] ) .
 
 macro_statement =
     if_statement

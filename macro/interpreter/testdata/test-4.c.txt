@@ -1,7 +1,8 @@
 
 
 
-A(10 A(10))
+
+A(10 "C<call>" A(10) "C<call>"("C<call>"))
 
 
 "call(A(x))"(A(100))

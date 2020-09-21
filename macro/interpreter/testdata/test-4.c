@@ -2,7 +2,8 @@
 ** 递归宏展开
 */
 /*递归函数*/
-#define A(x) A(x A(x))
+#define C "C<call>"
+#define A(x) A(x C A(x) C(C))
 A(10)
 #undef A
 #define A(x) "call(A(x))"(A(x))
