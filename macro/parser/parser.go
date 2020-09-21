@@ -482,12 +482,12 @@ func (p *Parser) parseMacroExpr() (node ast.MacroLiter) {
 		p.next()
 		if p.nextNotEmptyIs(token.DOUBLE_SHARP) {
 			p.skipWhitespace()
-			p.next() //##
+			sp, _, _ := p.next() //##
 			p.skipWhitespace()
 			pos, _, name := p.expectedIdent()
 			return &ast.BinaryExpr{
 				X:      id,
-				Offset: id.Pos(),
+				Offset: sp,
 				Op:     token.DOUBLE_SHARP,
 				Y: &ast.Ident{
 					Offset: pos,
