@@ -297,9 +297,11 @@ func bindParamIdent(v ast.MacroLiter, env *ExtractEnv) ast.MacroLiter {
 func (e *MacroExtractor) FuncRawStr(expr *ast.MacroCallExpr, env *ExtractEnv) string {
 	s := e.IdentStr(expr.Name, env)
 	s += strings.Repeat(" ", int(expr.Lparen-expr.Name.End()))
-	params := []string{}
-	for _, item := range *expr.ParamList {
-		params = append(params, e.Extract(item, env))
+	params := make([]string, 0)
+	if expr.ParamList != nil {
+		for _, item := range *expr.ParamList {
+			params = append(params, e.Extract(item, env))
+		}
 	}
 	s += "("
 	s += strings.Join(params, ",")
@@ -311,9 +313,11 @@ func (e *MacroExtractor) FuncRawStr(expr *ast.MacroCallExpr, env *ExtractEnv) st
 func (e *MacroExtractor) FuncRaw(expr *ast.MacroCallExpr) string {
 	s := expr.Name.Name
 	s += strings.Repeat(" ", int(expr.Lparen-expr.Name.End()))
-	params := []string{}
-	for _, item := range *expr.ParamList {
-		params = append(params, e.String(item))
+	params := make([]string, 0)
+	if expr.ParamList != nil {
+		for _, item := range *expr.ParamList {
+			params = append(params, e.String(item))
+		}
 	}
 	s += "("
 	s += strings.Join(params, ",")
