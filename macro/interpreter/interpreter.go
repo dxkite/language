@@ -6,7 +6,6 @@ import (
 	"dxkite.cn/language/macro/parser"
 	"dxkite.cn/language/macro/token"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 )
@@ -83,8 +82,7 @@ func (it *Interpreter) evalStmt(node ast.Node) {
 	case *ast.IfNoDefStmt:
 		it.evalIfNoDefined(n)
 	case *ast.IncludeStmt:
-		fmt.Println("include", n.Path)
-		it.writePlaceholder(n)
+		it.evalIncludeStmt(n)
 	case *ast.MacroCmdStmt:
 		if n.Kind != token.ERROR {
 			it.writePlaceholder(n)
@@ -147,21 +145,11 @@ func (it *Interpreter) writePlaceholder(node ast.Node) {
 	it.src.WriteString(strings.Repeat("\n", t-f+1))
 }
 
-func (it Interpreter) parseDefined(v *ast.UnaryExpr) string {
-	s := "defined"
-	s += " " + it.parseDefinedValue(v.X)
-	return s
-}
+// #include
+func (it *Interpreter) evalIncludeStmt(stmt *ast.IncludeStmt) {
+	fmt.Println("include", stmt.Path)
+	it.writePlaceholder(stmt)
 
-func (it Interpreter) parseDefinedValue(v ast.MacroLiter) string {
-	if id, ok := v.(*ast.Ident); ok {
-		return id.Name
-	} else if p, ok := v.(*ast.ParenExpr); ok {
-		return "(" + it.parseDefinedValue(p.X) + ")"
-	} else {
-		it.errorf(v.Pos(), "unexpected expr %s in defined", reflect.TypeOf(v))
-		return ""
-	}
 }
 
 // #if
