@@ -203,36 +203,34 @@ func (e *MacroExtractor) ExtractIdent(v *ast.Ident, env *ExtractEnv) string {
 // 未定义函数：作为宏展开函数名称 => 展开函数参数列表；
 // 函数自调用：作为未定义函数展开；
 func (e *MacroExtractor) ExtractFunc(v *ast.MacroCallExpr, env *ExtractEnv) string {
-	// 函数自调用：作为未定义函数展开；
-	if env.InStack(v.Name.Name) {
+	if f, ok := e.it.GetFunc(v.Name.Name); ok && !env.InStack(v.Name.Name) {
+		// 已定义函数：展开形参（形参有#或##不进行宏参数的展开）=> 参数去除空白 => 展开当前宏；
+		defer env.Pop()
+		// 从全局调用的创建新的调用环境
+		if env.EmptyStack() {
+			env.Push(v.Name.Name)
+			return e.Func(v, f, NewEnv(v.Pos(), v.Name.Name, env.Val))
+		}
+		env.Push(v.Name.Name)
+		return e.Func(v, f, env)
+	} else {
+		// 函数自调用：作为未定义函数展开；
+		// 未定义函数：作为宏展开函数名称 => 展开函数参数列表；
 		return e.FuncRawStr(v, env)
 	}
-	defer env.Pop()
-	// 从全局调用的创建新的调用环境
-	if env.EmptyStack() {
-		env.Push(v.Name.Name)
-		return e.Func(v, NewEnv(v.Pos(), v.Name.Name, env.Val))
-	}
-	env.Push(v.Name.Name)
-	return e.Func(v, env)
 }
 
 // 展开宏函数
-func (e *MacroExtractor) Func(expr *ast.MacroCallExpr, env *ExtractEnv) string {
-	name := expr.Name.Name
-	if v, ok := e.it.Val[name]; ok {
-		if vv, ok := v.(*MacroFuncValue); ok {
-			if vv.IsEmptyBody() {
-				return ""
-			}
-			if params, err := buildMacroParameter(expr, vv, env); err == nil {
-				return e.Extract(vv.stmt.Body, NewExtractEnv(env.Pos(expr.Pos()), env.Stack, params))
-			} else {
-				e.it.error(expr.Pos(), err.Error())
-			}
-		}
+func (e *MacroExtractor) Func(expr *ast.MacroCallExpr, vv *MacroFuncValue, env *ExtractEnv) string {
+	if vv.IsEmptyBody() {
+		return ""
 	}
-	return e.FuncRawStr(expr, env)
+	if params, err := buildMacroParameter(expr, vv, env); err == nil {
+		return e.Extract(vv.stmt.Body, NewExtractEnv(env.Pos(expr.Pos()), env.Stack, params))
+	} else {
+		e.it.error(expr.Pos(), err.Error())
+	}
+	return ""
 }
 
 // 构建函数参数

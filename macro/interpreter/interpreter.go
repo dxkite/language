@@ -42,6 +42,16 @@ func (it *Interpreter) GetValue(name string) (v MacroValue, exist bool) {
 	return
 }
 
+// 获取宏定义函数
+func (it *Interpreter) GetFunc(name string) (v *MacroFuncValue, exist bool) {
+	if v, ok := it.Val[name]; ok {
+		if vv, ok := v.(*MacroFuncValue); ok {
+			return vv, true
+		}
+	}
+	return nil, false
+}
+
 // 转换成位置
 func (it *Interpreter) Position(pos token.Pos) token.Position {
 	return it.pos.CreatePosition(pos)
